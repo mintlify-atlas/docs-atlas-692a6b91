@@ -1,0 +1,560 @@
+---
+title: "Farms and users — LiteFarm API reference"
+description: "Manage farms, user profiles, and user-farm memberships. Covers CRUD endpoints for farms, users, roles, and invitations in the LiteFarm API."
+---
+
+Farms and users are the core organizational units of the LiteFarm platform. A farm is the top-level container for all agricultural data. Each user can belong to multiple farms through a `userFarm` relationship that records their role and status on that farm. All endpoints on this page require a valid `Authorization: Bearer <token>` header.
+
+---
+
+## Farms
+
+### Get a farm
+
+Returns details for a single farm, including country information.
+
+```
+GET /farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/farm/abc-123 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/farm/abc-123', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const farm = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+<ResponseField name="farm_id" type="string">Unique farm identifier (UUID).</ResponseField>
+<ResponseField name="farm_name" type="string">Display name of the farm.</ResponseField>
+<ResponseField name="address" type="string">Street address.</ResponseField>
+<ResponseField name="grid_points" type="object">
+  Geographic coordinates.
+  <Expandable title="properties">
+    <ResponseField name="lat" type="number">Latitude.</ResponseField>
+    <ResponseField name="lng" type="number">Longitude.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="country_id" type="integer">ID of the country record.</ResponseField>
+<ResponseField name="farm_phone_number" type="string">Contact phone number.</ResponseField>
+<ResponseField name="units" type="object">
+  Farm measurement and currency settings.
+  <Expandable title="properties">
+    <ResponseField name="measurement" type="string">`imperial` or `metric`.</ResponseField>
+    <ResponseField name="currency" type="string">ISO 4217 currency code, e.g. `USD`, `EUR`.</ResponseField>
+    <ResponseField name="date_format" type="string">`MM/DD/YY`, `DD/MM/YY`, or `YY/MM/DD`.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="utc_offset" type="integer">UTC offset in minutes, derived from the farm's grid points at creation time.</ResponseField>
+<ResponseField name="farm_image_url" type="string">URL of the farm's cover image.</ResponseField>
+<ResponseField name="owner_operated" type="boolean">Whether the farm is owner-operated.</ResponseField>
+<ResponseField name="default_initial_location_id" type="string">ID of the default starting location for new animals or tasks.</ResponseField>
+
+---
+
+### Create a farm
+
+Creates a new farm. The authenticated user becomes the farm owner and an `Owner` `userFarm` record is created automatically.
+
+```
+POST /farm
+```
+
+#### Request body
+
+<ParamField body="farm_name" type="string" required>
+  Name of the farm (1–255 characters).
+</ParamField>
+
+<ParamField body="address" type="string">
+  Street address of the farm.
+</ParamField>
+
+<ParamField body="grid_points" type="object">
+  Geographic coordinates used to derive the farm's UTC offset.
+  <Expandable title="properties">
+    <ParamField body="lat" type="number">Latitude.</ParamField>
+    <ParamField body="lng" type="number">Longitude.</ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="country" type="string" required>
+  Country name used to look up unit defaults (measurement system, currency).
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/farm \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "farm_name": "Sunrise Organics",
+    "address": "1234 Farm Road",
+    "grid_points": { "lat": 49.2827, "lng": -123.1207 },
+    "country": "Canada"
+  }'
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/farm', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    farm_name: 'Sunrise Organics',
+    address: '1234 Farm Road',
+    grid_points: { lat: 49.2827, lng: -123.1207 },
+    country: 'Canada',
+  }),
+});
+const farm = await res.json();
+```
+
+</CodeGroup>
+
+Returns `201` with the created farm object merged with the new `userFarm` record.
+
+---
+
+### Update a farm
+
+Updates editable farm fields. Requires the `edit:farms` scope (Owner or Manager role).
+
+```
+PATCH /farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm to update.
+</ParamField>
+
+#### Request body
+
+Send only the fields you want to change. All fields are optional on PATCH.
+
+<ParamField body="farm_name" type="string">Updated farm name.</ParamField>
+<ParamField body="address" type="string">Updated address.</ParamField>
+<ParamField body="farm_phone_number" type="string">Updated phone number.</ParamField>
+<ParamField body="units" type="object">
+  Updated unit preferences.
+  <Expandable title="properties">
+    <ParamField body="measurement" type="string">`imperial` or `metric`.</ParamField>
+    <ParamField body="currency" type="string">ISO 4217 currency code.</ParamField>
+    <ParamField body="date_format" type="string">`MM/DD/YY`, `DD/MM/YY`, or `YY/MM/DD`.</ParamField>
+  </Expandable>
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X PATCH https://api.litefarm.org/farm/abc-123 \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "farm_phone_number": "+1-604-555-0100" }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/farm/abc-123', {
+  method: 'PATCH',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ farm_phone_number: '+1-604-555-0100' }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Delete a farm
+
+Soft-deletes a farm. Requires the `delete:farms` scope (Owner only).
+
+```
+DELETE /farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm.
+</ParamField>
+
+---
+
+## Users
+
+### Get a user profile
+
+Returns the profile of a specific user. You can only retrieve your own profile (`isSelf` enforcement).
+
+```
+GET /user/:user_id
+```
+
+<ParamField path="user_id" type="string" required>
+  UUID of the user.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/user/user-uuid-here \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/user/user-uuid-here', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const user = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+<ResponseField name="user_id" type="string">Unique user identifier.</ResponseField>
+<ResponseField name="first_name" type="string">First name.</ResponseField>
+<ResponseField name="last_name" type="string">Last name.</ResponseField>
+<ResponseField name="email" type="string">Email address.</ResponseField>
+<ResponseField name="profile_picture" type="string">URL to profile picture.</ResponseField>
+<ResponseField name="phone_number" type="string">Phone number.</ResponseField>
+<ResponseField name="language_preference" type="string">Preferred locale code.</ResponseField>
+<ResponseField name="gender" type="string">`MALE`, `FEMALE`, `OTHER`, or `PREFER_NOT_TO_SAY`.</ResponseField>
+<ResponseField name="birth_year" type="number">Year of birth.</ResponseField>
+<ResponseField name="notification_setting" type="object">
+  Notification preferences.
+  <Expandable title="properties">
+    <ResponseField name="alert_weather" type="boolean">Weather alerts.</ResponseField>
+    <ResponseField name="alert_worker_finish" type="boolean">Worker task completion alerts.</ResponseField>
+    <ResponseField name="alert_action_after_scouting" type="boolean">Post-scouting action alerts.</ResponseField>
+    <ResponseField name="alert_before_planned_date" type="boolean">Pre-task reminder alerts.</ResponseField>
+    <ResponseField name="alert_pest" type="boolean">Pest detection alerts.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="do_not_email" type="boolean">Whether transactional emails are suppressed.</ResponseField>
+
+---
+
+### Update a user profile
+
+Updates the authenticated user's own profile fields.
+
+```
+PUT /user/:user_id
+```
+
+<ParamField path="user_id" type="string" required>
+  Must match the authenticated user's own `user_id`.
+</ParamField>
+
+#### Request body
+
+<ParamField body="first_name" type="string">Updated first name.</ParamField>
+<ParamField body="last_name" type="string">Updated last name.</ParamField>
+<ParamField body="phone_number" type="string">Updated phone number.</ParamField>
+<ParamField body="profile_picture" type="string">URL to a new profile picture.</ParamField>
+<ParamField body="language_preference" type="string">Preferred locale code, e.g. `en`, `es`, `fr`.</ParamField>
+<ParamField body="gender" type="string">`MALE`, `FEMALE`, `OTHER`, or `PREFER_NOT_TO_SAY`.</ParamField>
+<ParamField body="birth_year" type="number">Year of birth (1900 to current year).</ParamField>
+<ParamField body="notification_setting" type="object">Notification preferences object.</ParamField>
+<ParamField body="do_not_email" type="boolean">Set to `true` to suppress non-critical emails.</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X PUT https://api.litefarm.org/user/user-uuid-here \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "first_name": "Maria", "language_preference": "es" }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/user/user-uuid-here', {
+  method: 'PUT',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ first_name: 'Maria', language_preference: 'es' }),
+});
+```
+
+</CodeGroup>
+
+---
+
+## User-farm relationships
+
+A `userFarm` record joins a user to a farm and records their role, consent status, and optional wage.
+
+### User roles
+
+| `role_id` | Role name | Permissions |
+|-----------|-----------|-------------|
+| `5` | Owner | Full access, including deleting the farm and managing all users. |
+| `1` | Manager | Edit farm data, manage workers and tasks. |
+| `3` | Worker | View and complete assigned tasks. |
+| `2` | Extension Officer | View-only access for advisory purposes. |
+
+### Get user-farms by user
+
+Returns all farm memberships for a given user. No scope restriction — a user may always see their own farm list.
+
+```
+GET /user_farm/user/:user_id
+```
+
+<ParamField path="user_id" type="string" required>
+  UUID of the user.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/user_farm/user/user-uuid-here \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/user_farm/user/user-uuid-here', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const memberships = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+Returns an array of userFarm objects.
+
+<ResponseField name="user_id" type="string">User UUID.</ResponseField>
+<ResponseField name="farm_id" type="string">Farm UUID.</ResponseField>
+<ResponseField name="role_id" type="number">Numeric role ID. See role table above.</ResponseField>
+<ResponseField name="status" type="string">`Active`, `Inactive`, or `Invited`.</ResponseField>
+<ResponseField name="has_consent" type="boolean">Whether the user has accepted the current consent version.</ResponseField>
+<ResponseField name="wage" type="object">
+  Optional wage information.
+  <Expandable title="properties">
+    <ResponseField name="type" type="string">`hourly` or `annually`.</ResponseField>
+    <ResponseField name="amount" type="number">Wage amount in the farm's currency.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+### Get users on a farm
+
+Returns all `userFarm` records (with embedded user data) for a farm. Requires the `get:user_farm_info` scope (Manager or Owner).
+
+```
+GET /user_farm/farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm.
+</ParamField>
+
+---
+
+### Get active users on a farm
+
+Same as the endpoint above, but filters out `Inactive` and `Invited` members.
+
+```
+GET /user_farm/active/farm/:farm_id
+```
+
+---
+
+### Invite a user to a farm
+
+Sends an invitation email to a new user and creates a pending `userFarm` record. Requires the `add:users` scope.
+
+```
+POST /user/invite
+```
+
+#### Request body
+
+<ParamField body="farm_id" type="string" required>
+  UUID of the farm the user is being invited to.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Email address of the person to invite.
+</ParamField>
+
+<ParamField body="first_name" type="string" required>
+  First name of the invitee.
+</ParamField>
+
+<ParamField body="last_name" type="string">
+  Last name of the invitee.
+</ParamField>
+
+<ParamField body="role_id" type="number" required>
+  Role to assign. Use `1` for Manager, `3` for Worker, or `2` for Extension Officer.
+</ParamField>
+
+<ParamField body="wage" type="object">
+  Optional starting wage.
+  <Expandable title="properties">
+    <ParamField body="type" type="string">`hourly` or `annually`.</ParamField>
+    <ParamField body="amount" type="number">Wage amount.</ParamField>
+  </Expandable>
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/user/invite \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "farm_id": "abc-123",
+    "email": "worker@example.com",
+    "first_name": "Alex",
+    "role_id": 3
+  }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/user/invite', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    farm_id: 'abc-123',
+    email: 'worker@example.com',
+    first_name: 'Alex',
+    role_id: 3,
+  }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Update a user's role
+
+Changes the `role_id` for a user on a specific farm. Requires the `edit:user_role` scope.
+
+```
+PATCH /user_farm/role/farm/:farm_id/user/:user_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm.
+</ParamField>
+
+<ParamField path="user_id" type="string" required>
+  UUID of the user whose role is being changed.
+</ParamField>
+
+#### Request body
+
+<ParamField body="role_id" type="number" required>
+  The new role ID (`5` = Owner, `1` = Manager, `3` = Worker, `2` = Extension Officer).
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X PATCH "https://api.litefarm.org/user_farm/role/farm/abc-123/user/user-uuid" \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "role_id": 1 }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/user_farm/role/farm/abc-123/user/user-uuid', {
+  method: 'PATCH',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ role_id: 1 }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Update a user's status on a farm
+
+Sets the `status` field of a `userFarm` record. Requires the `edit:user_status` scope.
+
+```
+PATCH /user_farm/status/farm/:farm_id/user/:user_id
+```
+
+<ParamField path="farm_id" type="string" required>UUID of the farm.</ParamField>
+<ParamField path="user_id" type="string" required>UUID of the user.</ParamField>
+
+#### Request body
+
+<ParamField body="status" type="string" required>
+  `Active`, `Inactive`, or `Invited`.
+</ParamField>
+
+---
+
+### Update user wage
+
+Updates the hourly or annual wage for a user on a farm. Requires the `edit:user_wage` scope.
+
+```
+PATCH /user_farm/wage/farm/:farm_id/user/:user_id
+```
+
+<ParamField path="farm_id" type="string" required>UUID of the farm.</ParamField>
+<ParamField path="user_id" type="string" required>UUID of the user.</ParamField>
+
+#### Request body
+
+<ParamField body="wage" type="object" required>
+  <Expandable title="properties">
+    <ParamField body="type" type="string" required>`hourly` or `annually`.</ParamField>
+    <ParamField body="amount" type="number" required>Wage amount in the farm's local currency.</ParamField>
+  </Expandable>
+</ParamField>

@@ -1,0 +1,576 @@
+---
+title: "Crops and management plans — LiteFarm API reference"
+description: "Manage crop records, crop varieties, and management plans via the LiteFarm REST API, including planting methods, harvest dates, and plan lifecycle."
+---
+
+The LiteFarm crop model has three layers: a base **crop** (e.g., "Tomato"), a farm-specific **crop variety** (e.g., "Roma – certified organic"), and a **management plan** that schedules the variety's planting, growth, and harvest. All endpoints require `Authorization: Bearer <token>`.
+
+---
+
+## Crops
+
+### Get all crops for a farm
+
+Returns both global LiteFarm crops and any custom crops added by the farm.
+
+```
+GET /crop/farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/crop/farm/abc-123 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/crop/farm/abc-123', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const crops = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+Returns an array of crop objects.
+
+<ResponseField name="crop_id" type="integer">Unique crop identifier.</ResponseField>
+<ResponseField name="farm_id" type="string">Farm UUID. Null for global crops provided by LiteFarm.</ResponseField>
+<ResponseField name="crop_common_name" type="string">The common name of the crop, e.g. `Tomato`.</ResponseField>
+<ResponseField name="crop_genus" type="string">Botanical genus, e.g. `Solanum`.</ResponseField>
+<ResponseField name="crop_specie" type="string">Botanical species, e.g. `lycopersicum`.</ResponseField>
+<ResponseField name="crop_group" type="string">FAO crop group, e.g. `Vegetables and melons`, `Cereals`.</ResponseField>
+<ResponseField name="crop_subgroup" type="string">FAO crop subgroup, e.g. `Fruit-bearing vegetables`.</ResponseField>
+<ResponseField name="crop_photo_url" type="string">URL to crop image.</ResponseField>
+<ResponseField name="lifecycle" type="string">`ANNUAL` or `PERENNIAL`.</ResponseField>
+<ResponseField name="seeding_type" type="string">`SEED` or `SEEDLING_OR_PLANTING_STOCK`.</ResponseField>
+<ResponseField name="needs_transplant" type="boolean">Whether the crop requires a transplant stage.</ResponseField>
+<ResponseField name="planting_method" type="string">`BROADCAST_METHOD`, `CONTAINER_METHOD`, `BED_METHOD`, or `ROW_METHOD`.</ResponseField>
+<ResponseField name="germination_days" type="integer">Expected days from seeding to germination.</ResponseField>
+<ResponseField name="harvest_days" type="integer">Expected days from seeding to harvest.</ResponseField>
+<ResponseField name="can_be_cover_crop" type="boolean">Whether this crop can serve as a cover crop.</ResponseField>
+
+---
+
+### Get a single crop
+
+```
+GET /crop/:crop_id
+```
+
+<ParamField path="crop_id" type="integer" required>
+  Numeric ID of the crop.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/crop/42 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/crop/42', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+```
+
+</CodeGroup>
+
+---
+
+### Create a crop
+
+Adds a custom crop to a farm. Requires the `add:crops` scope.
+
+```
+POST /crop
+```
+
+#### Request body
+
+<ParamField body="farm_id" type="string" required>
+  UUID of the farm this crop belongs to.
+</ParamField>
+
+<ParamField body="crop_common_name" type="string" required>
+  Common name of the crop (1–255 characters).
+</ParamField>
+
+<ParamField body="crop_genus" type="string">Botanical genus.</ParamField>
+<ParamField body="crop_specie" type="string">Botanical species.</ParamField>
+<ParamField body="crop_group" type="string">FAO crop group.</ParamField>
+<ParamField body="crop_subgroup" type="string">FAO crop subgroup.</ParamField>
+<ParamField body="lifecycle" type="string">`ANNUAL` or `PERENNIAL`.</ParamField>
+<ParamField body="seeding_type" type="string">`SEED` or `SEEDLING_OR_PLANTING_STOCK`.</ParamField>
+<ParamField body="needs_transplant" type="boolean">Whether the crop needs a transplant stage.</ParamField>
+<ParamField body="planting_method" type="string">`BROADCAST_METHOD`, `CONTAINER_METHOD`, `BED_METHOD`, or `ROW_METHOD`.</ParamField>
+<ParamField body="germination_days" type="integer">Days from seed to germination.</ParamField>
+<ParamField body="transplant_days" type="integer">Days from seeding to transplant.</ParamField>
+<ParamField body="harvest_days" type="integer">Days from seeding to harvest.</ParamField>
+<ParamField body="termination_days" type="integer">Days from seeding to termination (for cover crops).</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/crop \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "farm_id": "abc-123",
+    "crop_common_name": "Dragon Fruit",
+    "lifecycle": "PERENNIAL",
+    "seeding_type": "SEEDLING_OR_PLANTING_STOCK",
+    "harvest_days": 365
+  }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/crop', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    farm_id: 'abc-123',
+    crop_common_name: 'Dragon Fruit',
+    lifecycle: 'PERENNIAL',
+    seeding_type: 'SEEDLING_OR_PLANTING_STOCK',
+    harvest_days: 365,
+  }),
+});
+```
+
+</CodeGroup>
+
+Returns `200` with the created crop object.
+
+---
+
+### Update a crop
+
+Updates a farm's custom crop. Only user-added crops can be updated. Requires the `edit:crops` scope.
+
+```
+PUT /crop/:crop_id
+```
+
+<ParamField path="crop_id" type="integer" required>Crop ID to update.</ParamField>
+
+Send any subset of writable crop fields in the request body.
+
+---
+
+### Delete a crop
+
+Soft-deletes a crop. Only user-added crops can be deleted. Requires the `delete:crops` scope.
+
+```
+DELETE /crop/:crop_id
+```
+
+<ParamField path="crop_id" type="integer" required>Crop ID to delete.</ParamField>
+
+---
+
+## Crop varieties
+
+A crop variety refines a base crop with farm-specific attributes such as supplier, organic status, and compliance documents.
+
+### Get all crop varieties for a farm
+
+```
+GET /crop_variety/farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>UUID of the farm.</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/crop_variety/farm/abc-123 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/crop_variety/farm/abc-123', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const varieties = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+<ResponseField name="crop_variety_id" type="string">UUID of the crop variety.</ResponseField>
+<ResponseField name="crop_id" type="integer">ID of the parent crop.</ResponseField>
+<ResponseField name="farm_id" type="string">Farm UUID.</ResponseField>
+<ResponseField name="crop_variety_name" type="string">Name of the variety, e.g. `Roma`.</ResponseField>
+<ResponseField name="crop_varietal" type="string">Varietal classification.</ResponseField>
+<ResponseField name="crop_cultivar" type="string">Cultivar name.</ResponseField>
+<ResponseField name="supplier" type="string">Seed or plant supplier name.</ResponseField>
+<ResponseField name="organic" type="boolean">Whether the variety is certified organic.</ResponseField>
+<ResponseField name="treated" type="string">`YES`, `NO`, or `NOT_SURE`.</ResponseField>
+<ResponseField name="genetically_engineered" type="boolean">Whether the variety is genetically engineered.</ResponseField>
+<ResponseField name="compliance_file_url" type="string">URL to organic or other compliance certificate.</ResponseField>
+<ResponseField name="lifecycle" type="string">`ANNUAL` or `PERENNIAL`.</ResponseField>
+<ResponseField name="crop_variety_photo_url" type="string">URL to variety photo.</ResponseField>
+
+---
+
+### Get a single crop variety
+
+```
+GET /crop_variety/:crop_variety_id
+```
+
+<ParamField path="crop_variety_id" type="string" required>UUID of the crop variety.</ParamField>
+
+---
+
+### Create a crop variety
+
+```
+POST /crop_variety
+```
+
+#### Request body
+
+<ParamField body="crop_id" type="integer" required>ID of the parent crop.</ParamField>
+<ParamField body="farm_id" type="string" required>UUID of the farm.</ParamField>
+<ParamField body="crop_variety_name" type="string" required>Name for this variety.</ParamField>
+<ParamField body="supplier" type="string">Supplier name.</ParamField>
+<ParamField body="organic" type="boolean">Organic status.</ParamField>
+<ParamField body="treated" type="string">`YES`, `NO`, or `NOT_SURE`.</ParamField>
+<ParamField body="genetically_engineered" type="boolean">Genetically engineered flag.</ParamField>
+<ParamField body="lifecycle" type="string">`ANNUAL` or `PERENNIAL`.</ParamField>
+<ParamField body="compliance_file_url" type="string">URL to a compliance document.</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/crop_variety \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "crop_id": 42,
+    "farm_id": "abc-123",
+    "crop_variety_name": "Roma",
+    "organic": true,
+    "supplier": "West Coast Seeds"
+  }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/crop_variety', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    crop_id: 42,
+    farm_id: 'abc-123',
+    crop_variety_name: 'Roma',
+    organic: true,
+    supplier: 'West Coast Seeds',
+  }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Update a crop variety
+
+```
+PATCH /crop_variety/:crop_variety_id
+```
+
+<ParamField path="crop_variety_id" type="string" required>UUID of the variety to update.</ParamField>
+
+Send any subset of the writable variety fields.
+
+---
+
+### Delete a crop variety
+
+Cannot delete a variety that has an active management plan.
+
+```
+DELETE /crop_variety/:crop_variety_id
+```
+
+<ParamField path="crop_variety_id" type="string" required>UUID of the variety to delete.</ParamField>
+
+<Warning>
+  Deleting a crop variety with an active management plan will fail with `400`. Complete or abandon the plan first, then retry.
+</Warning>
+
+---
+
+## Management plans
+
+A management plan schedules the lifecycle of a crop variety from seeding through harvest or termination. Each plan belongs to a single `crop_variety_id`.
+
+### Get all management plans for a farm
+
+```
+GET /management_plan/farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>UUID of the farm.</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/management_plan/farm/abc-123 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/management_plan/farm/abc-123', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const plans = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+<ResponseField name="management_plan_id" type="integer">Unique plan identifier.</ResponseField>
+<ResponseField name="crop_variety_id" type="string">UUID of the crop variety being planned.</ResponseField>
+<ResponseField name="name" type="string">Human-readable name for the plan.</ResponseField>
+<ResponseField name="notes" type="string">Optional planning notes.</ResponseField>
+<ResponseField name="start_date" type="string">ISO 8601 date when the plan starts (seeding or transplanting).</ResponseField>
+<ResponseField name="complete_date" type="string">ISO 8601 date when the plan was marked complete.</ResponseField>
+<ResponseField name="abandon_date" type="string">ISO 8601 date when the plan was abandoned.</ResponseField>
+<ResponseField name="abandon_reason" type="string">Reason for abandonment.</ResponseField>
+<ResponseField name="complete_notes" type="string">Notes recorded at completion.</ResponseField>
+<ResponseField name="rating" type="integer">Season rating, 0–5.</ResponseField>
+<ResponseField name="management_plan_group_id" type="string">UUID linking plans that repeat as a group.</ResponseField>
+<ResponseField name="repetition_number" type="integer">Position within a repeating plan group (1-indexed).</ResponseField>
+
+---
+
+### Get a management plan by date
+
+Returns all plans for a farm that are active on a given date.
+
+```
+GET /management_plan/farm/date/:farm_id/:date
+```
+
+<ParamField path="farm_id" type="string" required>UUID of the farm.</ParamField>
+<ParamField path="date" type="string" required>ISO 8601 date string, e.g. `2024-06-15`.</ParamField>
+
+---
+
+### Get expired management plans
+
+Returns plans whose harvest or termination date has passed.
+
+```
+GET /management_plan/expired/farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>UUID of the farm.</ParamField>
+
+---
+
+### Get a single management plan
+
+```
+GET /management_plan/:management_plan_id
+```
+
+<ParamField path="management_plan_id" type="integer" required>ID of the management plan.</ParamField>
+
+---
+
+### Create a management plan
+
+Requires the `add:management_plan` scope.
+
+```
+POST /management_plan
+```
+
+#### Request body
+
+<ParamField body="crop_variety_id" type="string" required>
+  UUID of the crop variety to plan.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Display name for the management plan.
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Free-text planning notes.
+</ParamField>
+
+<ParamField body="start_date" type="string">
+  ISO 8601 date for the first planting event.
+</ParamField>
+
+<ParamField body="crop_management_plan" type="object">
+  Detailed planting configuration. Must reference a valid location (field, bed, greenhouse).
+  <Expandable title="properties">
+    <ParamField body="seed_date" type="string">ISO 8601 seed date.</ParamField>
+    <ParamField body="plant_date" type="string">ISO 8601 transplant date.</ParamField>
+    <ParamField body="harvest_date" type="string">ISO 8601 expected harvest date.</ParamField>
+    <ParamField body="termination_date" type="string">ISO 8601 termination date for cover crops.</ParamField>
+    <ParamField body="estimated_yield" type="number">Expected yield amount.</ParamField>
+    <ParamField body="estimated_yield_unit" type="string">Unit of yield, e.g. `kg`, `lb`.</ParamField>
+    <ParamField body="estimated_price_per_mass" type="number">Expected price per unit of yield.</ParamField>
+  </Expandable>
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/management_plan \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "crop_variety_id": "cv-uuid-here",
+    "name": "Spring Tomatoes 2024",
+    "start_date": "2024-04-01",
+    "crop_management_plan": {
+      "seed_date": "2024-04-01",
+      "harvest_date": "2024-08-15",
+      "estimated_yield": 500,
+      "estimated_yield_unit": "kg"
+    }
+  }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/management_plan', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    crop_variety_id: 'cv-uuid-here',
+    name: 'Spring Tomatoes 2024',
+    start_date: '2024-04-01',
+    crop_management_plan: {
+      seed_date: '2024-04-01',
+      harvest_date: '2024-08-15',
+      estimated_yield: 500,
+      estimated_yield_unit: 'kg',
+    },
+  }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Update a management plan
+
+Requires the `edit:management_plan` scope.
+
+```
+PATCH /management_plan/:management_plan_id
+```
+
+<ParamField path="management_plan_id" type="integer" required>ID of the plan to update.</ParamField>
+
+Send any subset of writable fields (`name`, `notes`, `start_date`, etc.).
+
+---
+
+### Complete a management plan
+
+Marks a plan as complete. All tasks associated with the plan must be completed or abandoned first.
+
+```
+PATCH /management_plan/:management_plan_id/complete
+```
+
+<ParamField path="management_plan_id" type="integer" required>ID of the plan.</ParamField>
+
+#### Request body
+
+<ParamField body="complete_date" type="string" required>ISO 8601 completion date.</ParamField>
+<ParamField body="complete_notes" type="string">Optional completion notes.</ParamField>
+<ParamField body="rating" type="integer">Season rating from 0 to 5.</ParamField>
+
+---
+
+### Abandon a management plan
+
+Marks a plan as abandoned with a reason.
+
+```
+PATCH /management_plan/:management_plan_id/abandon
+```
+
+<ParamField path="management_plan_id" type="integer" required>ID of the plan.</ParamField>
+
+#### Request body
+
+<ParamField body="abandon_date" type="string" required>ISO 8601 abandonment date.</ParamField>
+<ParamField body="abandon_reason" type="string">Reason for abandonment.</ParamField>
+
+---
+
+### Delete a management plan
+
+Soft-deletes a management plan. Requires the `delete:management_plan` scope.
+
+```
+DELETE /management_plan/:management_plan_id
+```
+
+<ParamField path="management_plan_id" type="integer" required>ID of the plan to delete.</ParamField>
+
+<Note>
+  Use `GET /management_plan/check_delete/:management_plan_id` before deleting to verify there are no blocking dependencies.
+</Note>
+
+---
+
+### Repeat a management plan
+
+Creates a copy of an existing plan with a new start date, grouped with the original.
+
+```
+POST /management_plan/repeat_plan
+```
+
+#### Request body
+
+<ParamField body="management_plan_id" type="integer" required>
+  ID of the plan to copy.
+</ParamField>

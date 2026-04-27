@@ -1,0 +1,148 @@
+---
+title: 'Sensors: monitor your farm with real-time readings'
+description: 'Connect environmental sensors to LiteFarm to track temperature, soil moisture, and rainfall — view current readings and historical charts from your farm.'
+---
+
+LiteFarm integrates with environmental sensor networks so you can monitor field conditions in real time and review historical data without leaving the platform. Sensor data feeds into the same system as your task and crop records, giving you a unified view of what is happening on your farm.
+
+<Note>
+Sensor integration is currently supported through Ensemble Scientific (ESCI). You need an active ESCI account and organisation to connect sensors to LiteFarm. Only Farm Owners and Farm Managers can add or remove sensors.
+</Note>
+
+---
+
+## Supported sensor types
+
+LiteFarm can receive and display readings from a range of sensor devices connected through ESCI.
+
+<CardGroup cols={2}>
+  <Card title="Soil Water Potential Sensor" icon="water">
+    Measures soil water potential, soil water content, and soil temperature. Supports sensor array configurations for monitoring at multiple depths.
+  </Card>
+  <Card title="IR Temperature Sensor" icon="thermometer">
+    Measures surface temperature using infrared technology. Useful for canopy temperature monitoring.
+  </Card>
+  <Card title="Weather station" icon="cloud-rain">
+    Measures air temperature, relative humidity, rainfall rate, cumulative rainfall, wind speed, wind direction, barometric pressure, and solar radiation.
+  </Card>
+  <Card title="Wind speed sensor" icon="wind">
+    Dedicated anemometer for wind speed measurement at field level.
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="Drip line pressure sensor" icon="gauge">
+    Monitors water pressure in drip irrigation lines to detect blockages or drops in system pressure.
+  </Card>
+  <Card title="Sensor arrays" icon="layers">
+    Multiple soil sensors deployed at different depths can be grouped into a sensor array, displaying combined charts to show the moisture profile through the soil column.
+  </Card>
+</CardGroup>
+
+---
+
+## Adding sensors to your farm
+
+Sensors are connected to LiteFarm through your ESCI organisation. Once connected, all sensors registered to that organisation are automatically synced to your farm.
+
+<Steps>
+  <Step title="Open Add sensors">
+    Go to **Sensors** in the main menu and click **Add sensors**, or navigate to **Farm settings → Add-ons** and find the ESCI integration.
+  </Step>
+  <Step title="Enter your ESCI organisation ID">
+    Enter the unique organisation UUID from your ESCI account. This links LiteFarm to your ESCI sensor network.
+  </Step>
+  <Step title="Confirm the connection">
+    Click **Save**. LiteFarm verifies your organisation ID with ESCI and imports your sensor list. If the ID is not recognised, check that you have copied it correctly from your ESCI account dashboard.
+  </Step>
+  <Step title="View your sensors">
+    After a successful connection, you are taken to your sensor list where all sensors in your ESCI organisation appear.
+  </Step>
+</Steps>
+
+<Warning>
+Each farm can only be linked to one ESCI organisation at a time. If you manage sensors across multiple organisations, you will need to consolidate them in ESCI before linking to LiteFarm.
+</Warning>
+
+---
+
+## Sensor list view
+
+The sensor list shows all sensors connected to your farm, grouped by sensor type or sensor array. Each entry displays the sensor's label, type, and connection status.
+
+<CardGroup cols={2}>
+  <Card title="Active sensors" icon="signal">
+    Sensors that have transmitted data recently are shown with a green status indicator. The most recent reading time is displayed on the sensor detail page.
+  </Card>
+  <Card title="Inactive sensors" icon="signal-slash">
+    Sensors that have not transmitted recently are flagged with a warning status. Check the physical sensor and your ESCI network configuration if a sensor shows as inactive.
+  </Card>
+</CardGroup>
+
+Tap any sensor or sensor array in the list to open its readings page.
+
+---
+
+## Viewing sensor readings
+
+The sensor readings page shows the latest measurements and a historical chart for the selected sensor or array.
+
+<Steps>
+  <Step title="View latest readings">
+    The top of the page shows the most recent value for each reading type the sensor supports — for example, the current soil water potential in kPa, or the current air temperature in °C.
+  </Step>
+  <Step title="Set a date range">
+    Use the date range selector to choose the historical period you want to view. You can review data across days, weeks, or months.
+  </Step>
+  <Step title="Read the charts">
+    Each measurement type is shown in its own chart with a colour-coded line. For sensor arrays, each sensor in the array is shown as a separate line so you can compare readings at different depths.
+  </Step>
+</Steps>
+
+<Info>
+Units on reading charts automatically match your farm's unit preference. Temperature is shown in °C for metric farms and °F for imperial farms. Rainfall is shown in mm or inches accordingly.
+</Info>
+
+Readings for weather stations include additional key performance indicators: temperature, wind speed and direction, cumulative rainfall, relative humidity, barometric pressure, solar radiation, and rainfall rate.
+
+---
+
+## Reading types and units
+
+<AccordionGroup>
+  <Accordion title="Temperature">
+    Displayed in °C (metric) or °F (imperial). Source unit from ESCI is °C.
+  </Accordion>
+  <Accordion title="Soil water potential">
+    Displayed in kPa. Indicates how hard plant roots need to work to extract water from the soil. Lower (more negative) values mean drier conditions.
+  </Accordion>
+  <Accordion title="Soil water content">
+    Displayed as a volumetric percentage. Represents the proportion of the soil volume that is water.
+  </Accordion>
+  <Accordion title="Relative humidity">
+    Displayed as a percentage. Available on weather stations.
+  </Accordion>
+  <Accordion title="Rainfall rate">
+    Displayed in mm/h (metric) or in/h (imperial).
+  </Accordion>
+  <Accordion title="Cumulative rainfall">
+    Displayed in mm (metric) or inches (imperial). Total rainfall accumulated over the selected date range.
+  </Accordion>
+  <Accordion title="Wind speed">
+    Displayed in km/h (metric) or mph (imperial). Source unit from ESCI is m/s.
+  </Accordion>
+  <Accordion title="Water pressure">
+    Displayed in psi. Used for drip line pressure sensors.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Disconnecting your sensor integration
+
+To remove the ESCI connection from your farm, go to **Farm settings → Add-ons**, find the ESCI entry, and click **Disconnect**. This removes the link between LiteFarm and your ESCI organisation. Historical reading data already stored in LiteFarm is not deleted, but no new readings will be received.
+
+<Warning>
+Disconnecting removes all active sensor links. If you reconnect later using the same organisation ID, your sensors will be re-imported.
+</Warning>
+

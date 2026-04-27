@@ -1,0 +1,131 @@
+---
+title: "Animal inventory: track individual animals and batches"
+description: "Manage livestock in LiteFarm by adding individual animals or batches, recording identifiers, origin, sex, and use, and assigning animal movement tasks."
+---
+
+LiteFarm's animal inventory lets you record every animal on your farm, either as an individual with its own profile or as a named batch representing a group. You can track type, breed, sex, origin, organic status, and more, and link animals to tasks like movement events. The inventory gives you a single place to view and manage all your livestock.
+
+## Individual animals vs. animal batches
+
+LiteFarm gives you two ways to record animals, depending on how much detail you need:
+
+<CardGroup cols={2}>
+  <Card title="Individual animals" icon="paw">
+    A record for a single animal with its own identifier, name, birth date, photo, and full profile. Use individual records when you need to track health history, pedigree, or per-animal details.
+  </Card>
+  <Card title="Animal batches" icon="layer-group">
+    A record for a group of animals of the same type and breed. You record the count and optionally a sex breakdown. Use batches for poultry, fish, or other livestock where tracking individuals is not practical.
+  </Card>
+</CardGroup>
+
+<Note>
+  You can mix individual animal records and batches for the same animal type. For example, you might have three named dairy cows as individuals and a batch of 50 broiler chickens.
+</Note>
+
+## Animal types and breeds
+
+LiteFarm includes a set of default animal types and breeds. If your animals are not covered by the defaults, you can create custom types and breeds.
+
+<AccordionGroup>
+  <Accordion title="Default animal types">
+    LiteFarm's built-in animal types cover common livestock categories. When you select a default type, a corresponding list of default breeds becomes available for selection.
+  </Accordion>
+  <Accordion title="Custom animal types">
+    If your animal type is not in the default list, create a custom type by typing a new name in the type field. Custom types are saved to your farm and available for all future animals.
+  </Accordion>
+  <Accordion title="Custom breeds">
+    Within any animal type (default or custom), you can type a new breed name to create a custom breed. Custom breeds are linked to their parent type.
+  </Accordion>
+</AccordionGroup>
+
+## Adding animals
+
+The add animals flow is a multi-step form. You can add one or more animals or batches in a single session.
+
+<Steps>
+  <Step title="Start the add flow">
+    From the **Animals** section, tap **Add animals**. The flow begins with the basics step.
+  </Step>
+  <Step title="Set type, breed, and sex">
+    Select the animal type (required). Optionally select a breed. For the sex, you can choose male, female, or provide a breakdown if adding a batch with mixed sexes.
+  </Step>
+  <Step title="Set the count">
+    For individual animals, the count is one. For batches, enter the total number of animals in the group. You can also choose to **Create individual profiles** if you want a separate record for each animal in the group.
+  </Step>
+  <Step title="Name the group (optional)">
+    Optionally give the batch a name (for example, "Spring 2025 lambs") to make it easier to find in the inventory.
+  </Step>
+  <Step title="Add details for each animal">
+    For each animal or batch, fill in the details tab:
+
+    - **Identifier** — a tag number, ear tag, microchip, or other ID. Select the identifier type and optionally record the tag colour.
+    - **Use** — the intended use of the animal (for example, meat, dairy, breeding, or fibre).
+    - **Origin** — whether the animal was born on the farm or brought in from outside. If brought in, you can record the supplier, purchase date, and price.
+    - **Date of birth** — the animal's birth or hatch date.
+    - **Weaning date** — for animals that are weaned.
+    - **Organic status** — Non-Organic, Transitional, or Organic.
+    - **Notes** — any free-text notes about the animal.
+    - **Photo** — upload a photo of the animal.
+  </Step>
+  <Step title="Review and save">
+    Review the summary and tap **Save** to add the animals to your inventory.
+  </Step>
+</Steps>
+
+<Tip>
+  Pedigree information (dam and sire names) is available in the details for individual animals if you need to track parentage.
+</Tip>
+
+## Animal identifier types
+
+When recording an identifier for an individual animal, you can specify the type of identifier:
+
+- Tag (ear tag, neck tag, or leg band)
+- Microchip
+- Brand
+- Other (with a free-text description)
+
+You can also record the colour of a tag to help visually identify animals in the field.
+
+## Viewing the animal inventory
+
+The animal inventory page shows all current animals and batches on your farm. From the inventory you can:
+
+- **Search** by animal name, identifier, or batch name.
+- **Filter** by animal type, breed, sex, location, task status, or origin using the filter panel.
+- **Sort** the list to find animals quickly.
+- **Select multiple animals** to perform bulk actions such as assigning a movement task or removing animals.
+
+The inventory also shows key performance indicators (KPIs) at the top of the page — a count of total animals, active animals, and other summary metrics depending on your filter selection.
+
+## Animal groups and batch management
+
+While LiteFarm does not have a dedicated "group" entity separate from batches, you can organise animals by giving batches descriptive names and using the filter tools to narrow the inventory by type, location, or other attributes.
+
+When adding animals, the option to create individual profiles from a count lets you quickly generate records for a whole group and then customise each one.
+
+## Animal movement tasks
+
+To record moving animals from one location to another, create an **Animal movement task**:
+
+<Steps>
+  <Step title="Create a new task">
+    From the Tasks page or from the animal inventory, create a new task and select **Animal movement** as the task type.
+  </Step>
+  <Step title="Select animals">
+    Choose the individual animals or batches being moved. You can select multiple animals at once.
+  </Step>
+  <Step title="Set the destination">
+    Select the farm location the animals are moving to. This updates the animal's recorded location when the task is completed.
+  </Step>
+  <Step title="Set the date and assignee">
+    Pick the movement date and assign the task to the worker carrying it out.
+  </Step>
+  <Step title="Complete the task">
+    When the movement is done, mark the task complete. The animals' location in the inventory updates automatically.
+  </Step>
+</Steps>
+
+## Removing animals
+
+When an animal leaves the farm (through sale, death, or other removal), you can mark it as removed rather than deleting the record. Select the animal in the inventory, choose **Remove**, and enter a reason and date. Removed animals are hidden from the active inventory by default but can be shown by toggling the **Show removed** filter.

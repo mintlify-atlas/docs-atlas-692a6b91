@@ -1,0 +1,135 @@
+---
+title: "Farm map: draw and manage your farm locations"
+description: "Learn how to use LiteFarm's interactive farm map to draw fields, gardens, greenhouses, and other locations, then view crops and tasks linked to each area."
+---
+
+The farm map is the spatial hub of your LiteFarm account. It gives you a satellite or road-view map centred on your farm where you can draw all your locations — fields, greenhouses, barns, watercourses, and more — and then see which crops are planted there and which tasks are due. Everything else in LiteFarm, from management plans to task assignments, connects back to the locations you define on the map.
+
+## Location types
+
+LiteFarm supports three categories of location: areas (polygon shapes), lines, and points. Each type captures a different kind of feature on your farm.
+
+<Tabs>
+  <Tab title="Areas">
+    Areas are drawn as closed polygons. They include places where crops grow, structures, and environmental zones.
+
+    <CardGroup cols={2}>
+      <Card title="Field" icon="seedling">
+        An outdoor crop-growing area. Fields support organic history tracking and can hold multiple management plans.
+      </Card>
+      <Card title="Garden" icon="leaf">
+        A smaller crop-growing area, typically with more intensive planting. Gardens also support organic history.
+      </Card>
+      <Card title="Greenhouse" icon="warehouse">
+        An enclosed growing structure. Greenhouse locations track organic status and support crop management plans.
+      </Card>
+      <Card title="Barn" icon="horse">
+        A farm building used for animals, equipment, or storage. Barns can be linked to animal movement tasks.
+      </Card>
+      <Card title="Natural area" icon="tree">
+        Woodland, hedgerows, or other unmanaged natural features on or adjacent to your farm.
+      </Card>
+      <Card title="Surface water" icon="water">
+        Ponds, lakes, or other bodies of surface water on the farm property.
+      </Card>
+      <Card title="Residence" icon="house">
+        A dwelling on the farm property, such as a farmhouse or worker accommodation.
+      </Card>
+      <Card title="Ceremonial area" icon="landmark">
+        A culturally or spiritually significant area on the farm.
+      </Card>
+      <Card title="Farm site boundary" icon="map">
+        An outline that marks the overall extent of the farm property.
+      </Card>
+    </CardGroup>
+  </Tab>
+  <Tab title="Lines">
+    Lines are drawn as open paths. They represent features that run across the farm rather than enclosing an area.
+
+    <CardGroup cols={2}>
+      <Card title="Buffer zone" icon="shield">
+        A strip of land separating a crop area from a potential contamination source. You set the width when drawing.
+      </Card>
+      <Card title="Watercourse" icon="droplets">
+        A stream, ditch, or drainage channel. LiteFarm records both the line and its buffer width.
+      </Card>
+      <Card title="Fence" icon="grip-lines">
+        A physical fence line on the property, useful for mapping livestock boundaries or field divisions.
+      </Card>
+    </CardGroup>
+  </Tab>
+  <Tab title="Points">
+    Points mark precise spots on the map using a single pin rather than a shape.
+
+    <CardGroup cols={2}>
+      <Card title="Gate" icon="door-open">
+        An access point through a fence, hedge, or other boundary.
+      </Card>
+      <Card title="Water valve" icon="faucet">
+        An irrigation control point such as a tap or valve.
+      </Card>
+      <Card title="Soil sample location" icon="flask">
+        A recorded spot where a soil sample was or will be taken.
+      </Card>
+    </CardGroup>
+  </Tab>
+</Tabs>
+
+## Drawing a new location
+
+<Steps>
+  <Step title="Open the map">
+    Navigate to **Map** in the main menu. The map opens centred on your farm's grid point.
+  </Step>
+  <Step title="Open the add drawer">
+    Tap the **+** button at the bottom of the map. A drawer slides up showing all available location types. This button is only visible to farm admins and managers.
+  </Step>
+  <Step title="Select a location type">
+    Tap the location type you want to add (for example, **Field** or **Greenhouse**). A drawing toolbar appears at the top of the screen and the map enters drawing mode.
+  </Step>
+  <Step title="Draw the shape">
+    - **Area**: Tap each corner of the location on the map to place vertices. A polygon forms as you add points.
+    - **Line**: Tap along the route of the feature. Each tap adds a node.
+    - **Point**: Tap once on the map to place the pin.
+
+    For buffer zones and watercourses, a panel appears asking you to set the width before you confirm.
+  </Step>
+  <Step title="Confirm the drawing">
+    When you are satisfied with the shape, tap **Confirm**. If you want to try again, tap **Try again** to clear the drawing and start over, or tap the back arrow to cancel.
+  </Step>
+  <Step title="Fill in details and save">
+    A form opens asking for the location's name and any type-specific details (such as organic history for fields). Fill in the required fields and tap **Save**.
+  </Step>
+</Steps>
+
+<Note>
+  The map requires an internet connection to load satellite imagery. If you are offline, drawing mode is disabled.
+</Note>
+
+<Tip>
+  First-time users see a spotlight tutorial when they start drawing an area or line. You can dismiss it if you already know the workflow.
+</Tip>
+
+## Editing and deleting locations
+
+To edit or delete an existing location, tap it on the map. A panel opens showing the location's details. From there you can:
+
+- **Edit details** — update the name, notes, organic history, or other type-specific fields by tapping the pencil icon or the **Edit** button.
+- **Redraw** — change the shape of the location by selecting **Redraw** and adjusting the vertices or path.
+- **Delete** — remove the location from your farm. LiteFarm checks whether the location has active management plans or incomplete tasks before allowing deletion. If dependencies exist, you will be prompted to resolve them first.
+
+<Warning>
+  Deleting a location permanently removes it and its associated data. This action cannot be undone.
+</Warning>
+
+## Viewing crops and tasks on the map
+
+The map does more than show location boundaries — it also surfaces what is happening in each location:
+
+- **Crop overlays** — fields, gardens, and greenhouses with active management plans display a crop indicator. Tap the location to see which varieties are planted and their current growth stage.
+- **Task pins** — locations with upcoming or overdue tasks show a task indicator. Tap to see a summary of pending work.
+- **Filter** — tap the filter icon in the map toolbar to show or hide specific location types, making it easier to focus on the part of your farm you are working in.
+
+## Exporting the map
+
+Farm owners and managers can export a screenshot of the current map view. Tap the export icon in the toolbar and choose to either **Download** the image directly or **Share** it by email.

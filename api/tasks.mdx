@@ -1,0 +1,621 @@
+---
+title: "Tasks and task types — LiteFarm API reference"
+description: "Create, assign, complete, and delete farm tasks in the LiteFarm API. Covers all task type endpoints and task-specific subtypes like harvest and soil amendment."
+---
+
+Tasks in LiteFarm represent discrete pieces of work to be performed on a farm — from planting and harvesting to pest control and irrigation. Each task has a **task type** (which determines its subtype schema), a due date, an optional assignee, and associations to farm locations and management plans. All endpoints require `Authorization: Bearer <token>`.
+
+<Note>
+  Tasks use a subtype pattern. A base task record is created and then a subtype record (e.g., `harvest_task`, `irrigation_task`) is linked to it by `task_id`. When creating tasks, POST to the task-type-specific endpoint — not a generic `/task` endpoint.
+</Note>
+
+---
+
+## Task types
+
+Task types classify what kind of work a task involves. LiteFarm ships built-in task types; farms can also create custom types.
+
+### Get all task types for a farm
+
+Returns both built-in and custom task types available on the farm.
+
+```
+GET /task_type/farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/task_type/farm/abc-123 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/task_type/farm/abc-123', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const taskTypes = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+<ResponseField name="task_type_id" type="integer">Unique identifier for the task type.</ResponseField>
+<ResponseField name="task_translation_key" type="string">Internal key used for i18n, e.g. `HARVEST_TASK`, `IRRIGATION_TASK`.</ResponseField>
+<ResponseField name="farm_id" type="string">Farm UUID for custom types; null for built-in types.</ResponseField>
+<ResponseField name="task_name" type="string">Display name for custom task types.</ResponseField>
+
+---
+
+### Get a task type by ID
+
+```
+GET /task_type/:task_type_id
+```
+
+<ParamField path="task_type_id" type="integer" required>
+  Numeric ID of the task type.
+</ParamField>
+
+---
+
+### Create a custom task type
+
+Creates a farm-specific task type. Requires the `add:task_types` scope.
+
+```
+POST /task_type
+```
+
+#### Request body
+
+<ParamField body="farm_id" type="string" required>
+  UUID of the farm this task type belongs to.
+</ParamField>
+
+<ParamField body="task_name" type="string" required>
+  Display name for the custom task type.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/task_type \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "farm_id": "abc-123", "task_name": "Fence repair" }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/task_type', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ farm_id: 'abc-123', task_name: 'Fence repair' }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Delete a task type
+
+Soft-deletes a custom task type. Requires the `delete:task_types` scope. Built-in task types cannot be deleted.
+
+```
+DELETE /task_type/:task_type_id
+```
+
+<ParamField path="task_type_id" type="integer" required>ID of the task type to delete.</ParamField>
+
+---
+
+## Retrieving tasks
+
+### Get all tasks for a farm
+
+Returns every non-deleted task associated with a farm's locations.
+
+```
+GET /task/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/task/abc-123 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/task/abc-123', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const tasks = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+<ResponseField name="task_id" type="integer">Unique task identifier.</ResponseField>
+<ResponseField name="task_type_id" type="integer">ID of the task type.</ResponseField>
+<ResponseField name="due_date" type="string">ISO 8601 date the task is due.</ResponseField>
+<ResponseField name="notes" type="string">Optional task notes (up to 10,000 characters).</ResponseField>
+<ResponseField name="owner_user_id" type="string">UUID of the user who created the task.</ResponseField>
+<ResponseField name="assignee_user_id" type="string">UUID of the assigned worker. Null if unassigned.</ResponseField>
+<ResponseField name="complete_date" type="string">ISO 8601 date the task was completed. Null if incomplete.</ResponseField>
+<ResponseField name="abandon_date" type="string">ISO 8601 date the task was abandoned. Null if not abandoned.</ResponseField>
+<ResponseField name="abandonment_reason" type="string">One of `OTHER`, `CROP_FAILURE`, `LABOUR_ISSUE`, `MARKET_PROBLEM`, `WEATHER`, `MACHINERY_ISSUE`, `SCHEDULING_ISSUE`, `NO_ANIMALS`.</ResponseField>
+<ResponseField name="duration" type="number">Time spent on the task in minutes.</ResponseField>
+<ResponseField name="happiness" type="integer">Worker satisfaction rating, 0–5.</ResponseField>
+<ResponseField name="locations" type="array">Locations associated with the task.</ResponseField>
+<ResponseField name="managementPlans" type="array">Planting management plans linked to this task.</ResponseField>
+
+---
+
+## Creating tasks
+
+Each task type has its own POST endpoint. The request body always includes the base task fields plus any subtype-specific fields.
+
+### Base task fields (common to all task creation requests)
+
+<ParamField body="due_date" type="string" required>
+  ISO 8601 date the task should be done, e.g. `2024-06-15`.
+</ParamField>
+
+<ParamField body="task_type_id" type="integer" required>
+  ID of the task type.
+</ParamField>
+
+<ParamField body="assignee_user_id" type="string">
+  UUID of the user to assign the task to. Workers can only create tasks assigned to themselves.
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Free-text notes for the assignee (up to 10,000 characters).
+</ParamField>
+
+<ParamField body="locations" type="array">
+  Array of `{ location_id }` objects associating the task with farm locations.
+</ParamField>
+
+<ParamField body="managementPlans" type="array">
+  Array of `{ planting_management_plan_id }` objects linking the task to management plans.
+</ParamField>
+
+---
+
+### Create a harvest task
+
+```
+POST /task/harvest_task
+```
+
+Includes all base fields plus:
+
+<ParamField body="harvest_everything" type="boolean">
+  Whether the entire planting is being harvested.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/task/harvest_task \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "due_date": "2024-08-20",
+    "task_type_id": 5,
+    "assignee_user_id": "worker-uuid",
+    "locations": [{ "location_id": "loc-uuid" }],
+    "harvest_everything": false
+  }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/task/harvest_task', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    due_date: '2024-08-20',
+    task_type_id: 5,
+    assignee_user_id: 'worker-uuid',
+    locations: [{ location_id: 'loc-uuid' }],
+    harvest_everything: false,
+  }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Create a soil amendment task
+
+```
+POST /task/soil_amendment_task
+```
+
+Includes all base fields plus product information (fertilisers, amendments).
+
+---
+
+### Create an irrigation task
+
+```
+POST /task/irrigation_task
+```
+
+Includes all base fields plus:
+
+<ParamField body="irrigation_task" type="object">
+  <Expandable title="properties">
+    <ParamField body="irrigation_type_id" type="integer">ID of the irrigation type.</ParamField>
+    <ParamField body="estimated_flow_rate" type="number">Flow rate in litres per hour.</ParamField>
+    <ParamField body="estimated_flow_rate_unit" type="string">Unit for flow rate.</ParamField>
+    <ParamField body="estimated_duration" type="number">Estimated duration in minutes.</ParamField>
+  </Expandable>
+</ParamField>
+
+---
+
+### Create a scouting task
+
+```
+POST /task/scouting_task
+```
+
+---
+
+### Create a pest control task
+
+```
+POST /task/pest_control_task
+```
+
+Includes product information for the pesticide or biological control agent used.
+
+---
+
+### Create a soil sample task
+
+```
+POST /task/soil_sample_task
+```
+
+---
+
+### Create a cleaning task
+
+```
+POST /task/cleaning_task
+```
+
+---
+
+### Create a field work task
+
+```
+POST /task/field_work_task
+```
+
+---
+
+### Create a transplant task
+
+```
+POST /task/transplant_task
+```
+
+---
+
+### Create an animal movement task
+
+```
+POST /task/animal_movement_task
+```
+
+Used to record the movement of animals to a new location.
+
+---
+
+### Create a custom task
+
+```
+POST /task/custom_task
+```
+
+Uses a farm-defined custom task type.
+
+---
+
+## Bulk harvest tasks
+
+Creates harvest tasks for multiple management plans at once.
+
+```
+POST /task/harvest_tasks
+```
+
+The request body accepts an array of harvest task objects. Each object follows the base task and harvest task schema.
+
+---
+
+## Assigning tasks
+
+### Assign a task to a user
+
+```
+PATCH /task/assign/:task_id
+```
+
+<ParamField path="task_id" type="integer" required>ID of the task.</ParamField>
+
+#### Request body
+
+<ParamField body="assignee_user_id" type="string" required>
+  UUID of the user to assign the task to.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X PATCH https://api.litefarm.org/task/assign/101 \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "assignee_user_id": "worker-uuid" }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/task/assign/101', {
+  method: 'PATCH',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ assignee_user_id: 'worker-uuid' }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Assign all tasks on a date
+
+Assigns the same user to all unassigned tasks on the same date as the reference task.
+
+```
+PATCH /task/assign_all_tasks_on_date/:task_id
+```
+
+<ParamField path="task_id" type="integer" required>
+  Reference task whose date is used to find other tasks.
+</ParamField>
+
+#### Request body
+
+<ParamField body="assignee_user_id" type="string" required>UUID of the user to assign.</ParamField>
+
+---
+
+### Update a task's due date
+
+```
+PATCH /task/patch_due_date/:task_id
+```
+
+<ParamField path="task_id" type="integer" required>ID of the task.</ParamField>
+
+#### Request body
+
+<ParamField body="due_date" type="string" required>New ISO 8601 due date.</ParamField>
+
+---
+
+## Completing tasks
+
+Each task type has a dedicated completion endpoint that accepts the completion data specific to that type.
+
+```
+PATCH /task/complete/<task_type>/:task_id
+```
+
+**Supported completion endpoints:**
+
+| Endpoint | Task type |
+|---|---|
+| `PATCH /task/complete/harvest_task/:task_id` | Harvest |
+| `PATCH /task/complete/soil_amendment_task/:task_id` | Soil amendment |
+| `PATCH /task/complete/soil_sample_task/:task_id` | Soil sample |
+| `PATCH /task/complete/irrigation_task/:task_id` | Irrigation |
+| `PATCH /task/complete/scouting_task/:task_id` | Scouting |
+| `PATCH /task/complete/pest_control_task/:task_id` | Pest control |
+| `PATCH /task/complete/cleaning_task/:task_id` | Cleaning |
+| `PATCH /task/complete/field_work_task/:task_id` | Field work |
+| `PATCH /task/complete/soil_task/:task_id` | Soil task |
+| `PATCH /task/complete/plant_task/:task_id` | Plant task |
+| `PATCH /task/complete/transplant_task/:task_id` | Transplant |
+| `PATCH /task/complete/animal_movement_task/:task_id` | Animal movement |
+| `PATCH /task/complete/custom_task/:task_id` | Custom task |
+
+#### Common completion body fields
+
+<ParamField body="complete_date" type="string" required>ISO 8601 completion date.</ParamField>
+<ParamField body="completion_notes" type="string">Notes recorded at completion.</ParamField>
+<ParamField body="happiness" type="integer">Worker satisfaction rating, 0–5.</ParamField>
+<ParamField body="duration" type="number">Time taken in minutes.</ParamField>
+
+#### Example — complete a harvest task
+
+<CodeGroup>
+
+```bash curl
+curl -X PATCH https://api.litefarm.org/task/complete/harvest_task/101 \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "complete_date": "2024-08-20",
+    "completion_notes": "Good yield, slight pest damage on outer rows.",
+    "happiness": 4,
+    "duration": 120
+  }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/task/complete/harvest_task/101', {
+  method: 'PATCH',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    complete_date: '2024-08-20',
+    completion_notes: 'Good yield, slight pest damage on outer rows.',
+    happiness: 4,
+    duration: 120,
+  }),
+});
+```
+
+</CodeGroup>
+
+---
+
+## Abandoning a task
+
+Marks a task as abandoned with a reason code.
+
+```
+PATCH /task/abandon/:task_id
+```
+
+<ParamField path="task_id" type="integer" required>ID of the task to abandon.</ParamField>
+
+#### Request body
+
+<ParamField body="abandon_date" type="string" required>ISO 8601 date of abandonment.</ParamField>
+<ParamField body="abandonment_reason" type="string" required>
+  One of `OTHER`, `CROP_FAILURE`, `LABOUR_ISSUE`, `MARKET_PROBLEM`, `WEATHER`, `MACHINERY_ISSUE`, `SCHEDULING_ISSUE`, `NO_ANIMALS`.
+</ParamField>
+<ParamField body="abandonment_notes" type="string">Additional context for why the task was abandoned.</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X PATCH https://api.litefarm.org/task/abandon/101 \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "abandon_date": "2024-08-18",
+    "abandonment_reason": "WEATHER",
+    "abandonment_notes": "Heavy rain made the field inaccessible."
+  }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/task/abandon/101', {
+  method: 'PATCH',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    abandon_date: '2024-08-18',
+    abandonment_reason: 'WEATHER',
+    abandonment_notes: 'Heavy rain made the field inaccessible.',
+  }),
+});
+```
+
+</CodeGroup>
+
+---
+
+## Deleting a task
+
+Soft-deletes a task. The task must not already be completed or abandoned. Requires the `delete:task` scope.
+
+```
+DELETE /task/:task_id
+```
+
+<ParamField path="task_id" type="integer" required>ID of the task to delete.</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X DELETE https://api.litefarm.org/task/101 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/task/101', {
+  method: 'DELETE',
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+```
+
+</CodeGroup>
+
+---
+
+## Harvest uses and field work types
+
+### Get harvest uses for a farm
+
+```
+GET /task/harvest_uses/farm/:farm_id
+```
+
+Returns the list of valid harvest uses (e.g., sale, self-consumption, animal feed).
+
+---
+
+### Get field work types for a farm
+
+```
+GET /task/get_field_work_types/:farm_id
+```
+
+Returns the list of field work types (e.g., tillage, mowing).
+
+---
+
+### Get irrigation task types for a farm
+
+```
+GET /task/irrigation_task_types/:farm_id
+```
+
+Returns the list of irrigation types available on the farm.

@@ -1,0 +1,290 @@
+---
+title: "Frontend architecture: React, Redux, and PWA"
+description: "Understand how LiteFarm's React app is structured with Redux Toolkit slices, redux-saga, MUI components, Google Maps, i18next, and a Workbox PWA service worker."
+---
+
+The LiteFarm webapp (`packages/webapp`) is a React 18 progressive web app built with Vite. It uses Redux Toolkit for state management, redux-saga for async side effects, Material UI for components, React Router for navigation, and Workbox for offline support. The app is designed primarily for mobile browsers, though it runs on desktop as well.
+
+## Application entry point
+
+`src/App.jsx` is the root component. It is wrapped in a `<BrowserRouter>` in `src/main.jsx` and receives the Redux `store` through `<Provider>`. `App.jsx` itself:
+
+- Detects offline status via `useOfflineDetector`
+- Listens for service worker updates via `useServiceWorkerListener`
+- Loads the Google Maps API via `useGoogleMapsLoader`
+- Renders `<Navigation>` (the persistent side menu) and `<Routes>` (the page content)
+
+```jsx title="packages/webapp/src/App.jsx"
+import { useGoogleMapsLoader } from './hooks/useGoogleMapsLoader';
+import { useOfflineDetector } from './containers/hooks/useOfflineDetector/useOfflineDetector';
+import { useServiceWorkerListener } from './hooks/useServiceWorkerListener/useServiceWorkerListener';
+import Routes from './routes';
+import Navigation from './containers/Navigation';
+
+function App() {
+  useOfflineDetector();
+  useServiceWorkerListener();
+  const { isLoaded } = useGoogleMapsLoader();
+
+  return (
+    <AppUIContext.Provider value={{ maps: { isLoaded } }}>
+      <Navigation>
+        <SnackbarProvider>
+          <Routes />
+        </SnackbarProvider>
+      </Navigation>
+    </AppUIContext.Provider>
+  );
+}
+```
+
+## Redux architecture
+
+### Store configuration
+
+The Redux store is configured in `src/store/store.ts` using Redux Toolkit's `configureStore`. State is persisted to `localStorage` via `redux-persist` with an `autoMergeLevel2` reconciliation strategy. The middleware chain includes redux-saga and the RTK Query API middleware:
+
+```typescript title="packages/webapp/src/store/store.ts"
+import { persistReducer, persistStore } from 'redux-persist';
+import { configureStore } from '@reduxjs/toolkit';
+import { sagaMiddleware } from './sagaMiddleware';
+import { api } from './api/apiSlice';
+import rootReducer from './reducer';
+import storage from 'redux-persist/lib/storage';
+
+const persistConfig = { key: 'root', storage, stateReconciler: autoMergeLevel2 };
+const persistedReducer = persistReducer(persistConfig, rootReducer);
+
+export const store = configureStore({
+  reducer: persistedReducer,
+  middleware: (getDefaultMiddleware) => [
+    ...getDefaultMiddleware({ serializableCheck: false })
+      .concat(api.middleware)
+      .concat(sagaMiddleware),
+  ],
+});
+```
+
+### Root reducer
+
+`src/store/reducer.js` combines all feature reducers using `combineReducers`. Reducers are grouped into four buckets:
+
+- **`entitiesReducer`** — normalised server data: crops, tasks, locations, animals, management plans, documents, and all sub-task types.
+- **`farmStateReducer`** — per-farm state reset when the user switches farms (notifications, surveys).
+- **`persistedStateReducer`** — data that should survive page reloads: user log, farm selection flow, map filter settings, map cache, and app settings.
+- **`tempStateReducer`** — ephemeral UI state: snackbars, offline detection, form persistence, and hook form data.
+
+The root reducer intercepts the `SWITCH_FARMS` action and drops `farmStateReducer` before delegating to `appReducer`, ensuring stale farm data is cleared when the active farm changes.
+
+### Slices
+
+Feature state is managed with Redux Toolkit's `createSlice`. Each slice lives next to its container component — for example, `src/containers/userFarmSlice.ts` owns all user-farm relationship state:
+
+```typescript title="packages/webapp/src/containers/userFarmSlice.ts"
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+
+const userFarmSlice = createSlice({
+  name: 'userFarmReducer',
+  initialState,
+  reducers: {
+    getUserFarmsByUserIdSuccess: addUserFarm,
+    selectFarmSuccess(state, action) {
+      state.farm_id = action.payload.farm_id;
+      state.user_id = action.payload.user_id;
+    },
+    // ...
+  },
+});
+```
+
+### Redux-saga for async operations
+
+Long-running async operations (API calls, multi-step flows) are handled by redux-saga. The root saga in `src/containers/saga.js` uses `all()` to fork every feature saga in parallel. Individual sagas use the `call`/`put`/`select`/`takeLatest` effects pattern:
+
+```javascript title="packages/webapp/src/containers/saga.js"
+import { all, call, put, takeLatest } from 'redux-saga/effects';
+
+function* getCropsSaga({ payload: farm_id }) {
+  try {
+    const result = yield call(axios.get, `${url}/crop/farm/${farm_id}`, { headers });
+    yield put(getAllCropsSuccess(result.data));
+  } catch (e) {
+    yield put(onLoadingCropFail(e));
+  }
+}
+```
+
+### RTK Query (`src/store/api/apiSlice.ts`)
+
+Newer API integrations use RTK Query. The `api` slice provides automatic caching, request deduplication, and cache invalidation through the standard `createApi` / `injectEndpoints` pattern.
+
+## Container/component pattern
+
+The codebase distinguishes between containers and components:
+
+- **`src/containers/`** — connected to Redux, own their own slice or saga, and implement page-level logic. Examples: `containers/Map/`, `containers/Task/`, `containers/Crop/`.
+- **`src/components/`** — presentational, receive data and callbacks via props, and have no direct Redux dependency. These are also the units registered in Storybook.
+
+Each feature container is typically co-located with its slice, saga, and selector files:
+
+```
+src/containers/Task/
+├── TaskCard/
+├── TaskList/
+├── AddTask/
+├── saga.js       # async side effects
+└── ...
+
+src/containers/taskSlice.js    # Redux slice
+```
+
+## React Router navigation
+
+Client-side routing uses React Router 5. The top-level `src/routes/index.jsx` component lazy-loads route groups with `React.lazy()` and `<Suspense>`, which keeps the initial bundle small:
+
+```jsx title="packages/webapp/src/routes/index.jsx"
+import React, { Suspense } from 'react';
+import { Redirect, Route, Switch } from 'react-router-dom';
+
+const Home = React.lazy(() => import('../containers/Home'));
+const Map = React.lazy(() => import('../containers/Map'));
+const Animals = React.lazy(() => import('./AnimalsRoutes'));
+
+function Routes() {
+  return (
+    <Suspense fallback={<Spinner />}>
+      <Switch>
+        <Route path="/home" component={Home} />
+        <Route path="/map" component={Map} />
+        {/* ... */}
+      </Switch>
+    </Suspense>
+  );
+}
+```
+
+Route path constants are centralised in `src/util/siteMapConstants.js` (e.g., `MAP_URL`, `ANIMALS_URL`) and imported wherever a programmatic redirect or `matchPath` check is needed.
+
+## Material UI (MUI)
+
+The webapp uses MUI 5 for the majority of UI elements. Emotion is configured as the style engine (via `@emotion/react` and the `@emotion/babel-plugin` Babel plugin in `vite.config.ts`). Custom styles use CSS Modules (`.module.scss` files) where MUI's `sx` prop or `styled()` API is not sufficient.
+
+```typescript title="packages/webapp/vite.config.ts"
+react({
+  jsxImportSource: '@emotion/react',
+  babel: {
+    plugins: ['@emotion/babel-plugin'],
+  },
+}),
+```
+
+MUI date pickers (`@mui/x-date-pickers`) are used for all date input fields throughout the task and management plan workflows.
+
+## Google Maps integration
+
+The farm map feature uses the Google Maps JavaScript API loaded via `@googlemaps/js-api-loader`. A custom hook centralises the loading logic so that the API is never initialised more than once, even if the hook is called from multiple components:
+
+```typescript title="packages/webapp/src/hooks/useGoogleMapsLoader.ts"
+import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
+
+export const ALL_LIBRARIES = ['maps', 'places', 'geometry', 'geocoding', 'marker'];
+
+export const useGoogleMapsLoader = (libraries = ALL_LIBRARIES) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadLibraries = async () => {
+      await Promise.all(libraries.map((lib) => importLibrary(lib)));
+      setIsLoaded(true);
+    };
+    loadLibraries();
+  }, [libraries.join(',')]);
+
+  return { isLoaded };
+};
+```
+
+Drawing and editing of field boundaries, buffer zones, and other location types is handled by `terra-draw` with a `terra-draw-google-maps-adapter`. The `@googlemaps/markerclusterer` package handles clustered marker rendering for large numbers of map points.
+
+## i18n with i18next
+
+Translations are managed with i18next 25 and react-i18next 16. Language files are loaded lazily from `public/locales/{lang}/` using `i18next-http-backend`. The browser language detector selects the initial language, and users can override it from their profile settings.
+
+```
+packages/webapp/public/locales/
+├── en/
+│   ├── common.json
+│   ├── crop.json
+│   ├── task.json
+│   └── ...
+├── es/
+├── fr/
+├── pt/
+└── ...
+```
+
+Translation keys are extracted from source files using the `i18next-parser` CLI (`pnpm i18n`). The export scheduler in `packages/api` copies the crop locale files from this directory into `packages/api/src/jobs/locales` so certification PDFs use the same crop names as the UI.
+
+## PWA with Workbox
+
+The app is configured as a PWA via the `vite-plugin-pwa` plugin using the `injectManifest` strategy. The service worker source is at `src/sw.js` and is compiled into the build output.
+
+```typescript title="packages/webapp/vite.config.ts"
+VitePWA({
+  registerType: 'autoUpdate',
+  strategies: 'injectManifest',
+  srcDir: 'src',
+  filename: 'sw.js',
+  injectManifest: {
+    globPatterns: ['**/*.{js,css,html,svg}'],
+    maximumFileSizeToCacheInBytes: 3 * 1024 ** 2, // 3 MB
+  },
+}),
+```
+
+Workbox modules used include `workbox-precaching`, `workbox-routing`, `workbox-strategies`, `workbox-expiration`, and `workbox-background-sync`. The `useOfflineDetector` hook dispatches to the `offlineDetectorSlice` so the UI can display an offline banner and queue actions.
+
+## Storybook
+
+Component development and visual review use Storybook 8 with the `@storybook/react-vite` framework. Run the development server from `packages/webapp`:
+
+```bash
+pnpm storybook
+# Opens at http://localhost:6006
+```
+
+A deployed Storybook instance is published automatically from the integration branch via Chromatic. Stories live alongside their components and follow the `*.stories.jsx` naming convention. Storybook addons include `a11y`, `actions`, `interactions`, `viewport`, and `docs`.
+
+## Vite build configuration
+
+`vite.config.ts` defines the build pipeline:
+
+<AccordionGroup>
+  <Accordion title="Path aliases">
+    Three aliases resolve common import paths:
+
+    ```typescript
+    resolve: {
+      alias: {
+        '@shared': path.resolve(__dirname, '../shared'),
+        '@components': path.resolve(__dirname, './src/components'),
+        '@assets': path.resolve(__dirname, './src/assets'),
+        '@navStyles': path.resolve(__dirname, './src/containers/Navigation/styles.module.scss'),
+      },
+    },
+    ```
+  </Accordion>
+  <Accordion title="Manual chunks">
+    The Rollup output is split into manual chunks to prevent the survey library from bloating the main entry point. React core is separated into a `framework-vendor` chunk; `survey-core` and `survey-react-ui` go into `survey-vendor`.
+  </Accordion>
+  <Accordion title="SVGR plugin">
+    SVG files are importable as React components via `vite-plugin-svgr`. This is used for icon assets throughout the app.
+  </Accordion>
+  <Accordion title="Istanbul coverage">
+    `vite-plugin-istanbul` instruments source files for coverage reporting when the `VITE_ISTANBUL` environment variable is set. This is used in Cypress end-to-end runs.
+  </Accordion>
+</AccordionGroup>
+
+<Info>
+  The webapp is designed for mobile viewports. When testing in the browser, switch to a mobile device emulation in DevTools. Most of LiteFarm can also be tested on a real device using the network address from `vite --host`, though Google SSO will not work over the local network.
+</Info>

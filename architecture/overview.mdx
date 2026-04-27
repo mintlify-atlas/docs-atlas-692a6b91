@@ -1,0 +1,170 @@
+---
+title: "LiteFarm architecture overview: monorepo and stack"
+description: "Learn how LiteFarm's Node.js API, React webapp, and shared package fit together in a Lerna monorepo, and which services support local development."
+---
+
+LiteFarm is structured as a Lerna monorepo. The repository contains three application packages plus an end-to-end test suite, all managed under a single root `package.json` alongside orchestration files for Docker and ngrok. Understanding how the packages relate to each other — and which supporting services they depend on — is the starting point for effective contribution.
+
+## Monorepo layout
+
+```
+LiteFarm/
+├── packages/
+│   ├── api/          # Express.js REST API and job scheduler
+│   ├── webapp/       # React progressive web app
+│   ├── shared/       # Locales and constants shared across packages
+│   └── end-to-end/   # Cypress end-to-end test suite
+├── lerna.json        # Lerna workspace configuration
+├── docker-compose.yml
+└── ngrok/
+```
+
+The root `lerna.json` declares `"packages": ["packages/*"]` and manages versioning across the workspace. Each package maintains its own `package.json`, Node version (`.nvmrc`), and dependency lockfile.
+
+<CardGroup cols={2}>
+  <Card title="packages/api" icon="server">
+    Express.js server written in TypeScript. Handles authentication, business logic, file storage, and the certification export job scheduler. Entry point: `src/server.ts`.
+  </Card>
+  <Card title="packages/webapp" icon="globe">
+    React 18 progressive web app. Uses Redux Toolkit, redux-saga, and Material UI. Built with Vite. Entry point: `src/main.jsx`.
+  </Card>
+  <Card title="packages/shared" icon="share-2">
+    Language files and shared constants consumed by both `api` and `webapp`. Contains locale JSON for the export scheduler and a small `constants/` module.
+  </Card>
+  <Card title="packages/end-to-end" icon="test-tube">
+    Cypress suite for browser-level integration tests, run against a live local stack.
+  </Card>
+</CardGroup>
+
+## Technology stack
+
+<Tabs>
+  <Tab title="API">
+    | Concern | Technology |
+    |---|---|
+    | Runtime | Node.js 22 |
+    | Framework | Express.js 4 |
+    | Language | TypeScript (compiled via SWC in dev, `tsc` for production) |
+    | ORM | Objection.js 3 on Knex 3 |
+    | Database | PostgreSQL 13 |
+    | Auth | `express-jwt` with HS256 tokens |
+    | Job queue | Bull 3 + Redis 7 |
+    | Logging | Winston with daily rotation |
+    | Error tracking | Sentry (non-development environments) |
+    | API docs | `express-oas-generator` served at `/api-docs` |
+  </Tab>
+  <Tab title="Webapp">
+    | Concern | Technology |
+    |---|---|
+    | Framework | React 18 |
+    | Build tool | Vite 4 |
+    | State | Redux Toolkit 1.9 + redux-saga 1.2 + redux-persist |
+    | UI library | Material UI 5 (MUI) |
+    | Routing | React Router 5 |
+    | Maps | Google Maps JS API via `@googlemaps/js-api-loader` |
+    | i18n | i18next 25 + react-i18next |
+    | PWA | Workbox 7 (inject-manifest strategy) |
+    | Component dev | Storybook 8 |
+    | Forms | React Hook Form 7 |
+    | Testing | Vitest, Cypress (end-to-end) |
+  </Tab>
+  <Tab title="Shared">
+    | Concern | Technology |
+    |---|---|
+    | Locale files | JSON translation strings (de, es, fr, hi, ml, pa, pt) |
+    | Constants | `constants/error.js` — shared error codes |
+    | Path alias | `@shared` resolves to `packages/shared` in the webapp Vite config |
+  </Tab>
+</Tabs>
+
+## How the packages interact
+
+The webapp communicates with the API over HTTP. In development the API listens on port `5001` (configurable via `PORT` in `packages/api/.env`) and the webapp dev server runs on port `3000`.
+
+```
+Browser (localhost:3000)
+    │  HTTPS JSON requests
+    ▼
+packages/api  (localhost:5001)
+    │  Knex queries
+    ▼
+PostgreSQL (localhost:5433 in Docker)
+    │  S3-SDK calls
+    ▼
+MinIO (localhost:9000)
+```
+
+The export job scheduler is a separate Node process (`src/jobs/index.js`) that runs alongside the API. It connects to the same Redis instance used by Bull and makes HTTP calls back to the API to fetch certification data.
+
+```
+packages/api/src/jobs/index.js
+    │  Bull queue (Redis)
+    ▼
+Redis (localhost:6380 in Docker)
+    │  S3 uploads
+    ▼
+MinIO
+```
+
+## Supporting services
+
+Running `docker compose up` from the repo root starts all development dependencies defined in `docker-compose.yml`.
+
+<AccordionGroup>
+  <Accordion title="PostgreSQL (db)">
+    Image `postgres:13`. The Docker container exposes port `5433` on the host (mapped from the default `5432` inside the container) to avoid conflicts with a locally installed Postgres. Two databases are expected: `pg-litefarm` for development and `test_farm` for the test suite.
+
+    ```yaml title="docker-compose.yml"
+    db:
+      container_name: litefarm-db
+      image: postgres:13
+      ports:
+        - "5433:5432"
+      environment:
+        POSTGRES_PASSWORD: "postgres"
+    ```
+  </Accordion>
+  <Accordion title="MinIO (object storage)">
+    Drop-in replacement for AWS S3. Used for farm images, uploaded documents, and certification export files. The API references MinIO through the AWS S3 SDK by pointing `MINIO_ENDPOINT` to `http://localhost:9000`. A helper container (`create_minio_bucket`) automatically creates the `minio-dev` bucket on first start.
+  </Accordion>
+  <Accordion title="Redis + export server">
+    Redis 7 and the export server are started only when you include the `export` Docker Compose profile: `docker compose up export`. The export server reads crop locale files from `packages/webapp/public/locales` at startup, then processes Bull jobs that generate organic certification PDF exports.
+  </Accordion>
+  <Accordion title="Imaginary (image compression)">
+    `h2non/imaginary:1.2.4` is a stateless HTTP microservice for image resizing and compression. The API sends image data to Imaginary before uploading to MinIO. In development, set `LOCAL_IMAGINARY=http://localhost:8088` in `packages/api/.env`.
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  The `redis` and `export` services use Docker Compose profiles. Run `docker compose up export` to include them. The `db`, `minio`, and `imaginary` services start by default with `docker compose up`.
+</Note>
+
+## Shared package contents
+
+`packages/shared` is a lightweight package that avoids duplicating content between the API and the webapp.
+
+```
+packages/shared/
+├── constants/
+│   └── error.js     # Shared error code constants
+└── locales/
+    ├── de/
+    ├── es/
+    ├── fr/
+    ├── hi/
+    ├── ml/
+    ├── pa/
+    └── pt/          # Translation strings for supported languages
+```
+
+The webapp's Vite config maps the `@shared` alias to this directory:
+
+```typescript title="packages/webapp/vite.config.ts"
+resolve: {
+  alias: {
+    '@shared': path.resolve(__dirname, '../shared'),
+  },
+},
+```
+
+The export scheduler copies locale files from `packages/webapp/public/locales` into `packages/api/src/jobs/locales` at startup (see the `scheduler` npm script), so crop translation keys are consistent across the certification PDF and the UI.

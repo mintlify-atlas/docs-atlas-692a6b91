@@ -1,0 +1,584 @@
+---
+title: "Finances: sales and expenses — LiteFarm API reference"
+description: "Record and retrieve farm sales, expenses, revenue types, and expense types using the LiteFarm REST API. Includes key fields and request/response examples."
+---
+
+The LiteFarm finances module covers two sides of the farm ledger: **sales** (revenue from crop, animal, or other product sales) and **expenses** (costs incurred by the farm). Each transaction belongs to a farm and references a revenue type or expense type that categorises it. All endpoints require `Authorization: Bearer <token>`.
+
+---
+
+## Sales
+
+### Get all sales for a farm
+
+Returns every non-deleted sale for the specified farm, including any associated crop variety line items.
+
+```
+GET /sale/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/sale/abc-123 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/sale/abc-123', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const sales = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+Returns an array of sale objects.
+
+<ResponseField name="sale_id" type="integer">Unique sale identifier.</ResponseField>
+<ResponseField name="farm_id" type="string">UUID of the farm the sale belongs to.</ResponseField>
+<ResponseField name="customer_name" type="string">Name of the customer or market channel.</ResponseField>
+<ResponseField name="sale_date" type="string">Date of the sale (ISO 8601 or similar date string).</ResponseField>
+<ResponseField name="revenue_type_id" type="integer">ID of the revenue type categorising this sale.</ResponseField>
+<ResponseField name="value" type="number">Total sale value in the farm's local currency. May be null if not tracked at the sale level.</ResponseField>
+<ResponseField name="note" type="string">Optional free-text note (up to 10,000 characters).</ResponseField>
+<ResponseField name="crop_variety_sale" type="array">
+  Line items linking crop varieties to this sale.
+  <Expandable title="properties">
+    <ResponseField name="crop_variety_id" type="string">UUID of the crop variety sold.</ResponseField>
+    <ResponseField name="sale_value" type="number">Revenue from this line item.</ResponseField>
+    <ResponseField name="quantity" type="number">Quantity sold.</ResponseField>
+    <ResponseField name="quantity_unit" type="string">Unit of quantity, e.g. `kg`, `lb`, `bunch`.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+### Create a sale
+
+Records a new sale. Requires the `add:sales` scope. The `farm_id` must be present in both the URL and the request body.
+
+```
+POST /sale
+```
+
+#### Request body
+
+<ParamField body="farm_id" type="string" required>
+  UUID of the farm the sale belongs to.
+</ParamField>
+
+<ParamField body="customer_name" type="string" required>
+  Name of the buyer or market (1–255 characters).
+</ParamField>
+
+<ParamField body="sale_date" type="string" required>
+  Date of the sale.
+</ParamField>
+
+<ParamField body="revenue_type_id" type="integer" required>
+  ID of the revenue type for this sale. Use `GET /revenue_type/farm/:farm_id` to list available types.
+</ParamField>
+
+<ParamField body="value" type="number">
+  Total sale amount in the farm's currency. Provide this when selling non-crop items or when a single total is preferred over line items.
+</ParamField>
+
+<ParamField body="note" type="string">
+  Optional note about the sale (up to 10,000 characters).
+</ParamField>
+
+<ParamField body="crop_variety_sale" type="array">
+  Line items for crop variety sales.
+  <Expandable title="properties">
+    <ParamField body="crop_variety_id" type="string" required>UUID of the crop variety.</ParamField>
+    <ParamField body="sale_value" type="number">Revenue for this line item.</ParamField>
+    <ParamField body="quantity" type="number">Quantity sold.</ParamField>
+    <ParamField body="quantity_unit" type="string">Unit of quantity.</ParamField>
+  </Expandable>
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/sale \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "farm_id": "abc-123",
+    "customer_name": "Farmers Market Stall",
+    "sale_date": "2024-08-20",
+    "revenue_type_id": 1,
+    "note": "Saturday market — good week",
+    "crop_variety_sale": [
+      {
+        "crop_variety_id": "cv-uuid-here",
+        "sale_value": 120.00,
+        "quantity": 30,
+        "quantity_unit": "kg"
+      }
+    ]
+  }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/sale', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    farm_id: 'abc-123',
+    customer_name: 'Farmers Market Stall',
+    sale_date: '2024-08-20',
+    revenue_type_id: 1,
+    note: 'Saturday market — good week',
+    crop_variety_sale: [
+      { crop_variety_id: 'cv-uuid-here', sale_value: 120.0, quantity: 30, quantity_unit: 'kg' },
+    ],
+  }),
+});
+```
+
+</CodeGroup>
+
+Returns `201` with the created sale object.
+
+---
+
+### Update a sale
+
+Updates an existing sale record. Workers can only update sales they created; Owners and Managers can update any sale on the farm.
+
+```
+PATCH /sale/:sale_id
+```
+
+<ParamField path="sale_id" type="integer" required>
+  ID of the sale to update.
+</ParamField>
+
+Send any subset of writable sale fields. The `crop_variety_sale` array will replace the existing line items if provided.
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X PATCH https://api.litefarm.org/sale/55 \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "note": "Corrected quantity — actual was 32 kg" }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/sale/55', {
+  method: 'PATCH',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ note: 'Corrected quantity — actual was 32 kg' }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Delete a sale
+
+Soft-deletes a sale record. Workers can only delete their own sales.
+
+```
+DELETE /sale/:sale_id
+```
+
+<ParamField path="sale_id" type="integer" required>
+  ID of the sale to delete.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X DELETE https://api.litefarm.org/sale/55 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/sale/55', {
+  method: 'DELETE',
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+```
+
+</CodeGroup>
+
+---
+
+## Expenses
+
+### Get all expenses for a farm
+
+Returns all non-deleted expense records for a farm.
+
+```
+GET /expense/farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/expense/farm/abc-123 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/expense/farm/abc-123', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const expenses = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+<ResponseField name="farm_expense_id" type="string">Unique expense identifier (UUID).</ResponseField>
+<ResponseField name="farm_id" type="string">UUID of the farm.</ResponseField>
+<ResponseField name="expense_type_id" type="string">ID of the expense type categorising this expense.</ResponseField>
+<ResponseField name="expense_date" type="string">ISO 8601 datetime of the expense.</ResponseField>
+<ResponseField name="value" type="number">Amount of the expense in the farm's local currency.</ResponseField>
+<ResponseField name="note" type="string">Description of the expense (1–255 characters).</ResponseField>
+<ResponseField name="picture" type="string">URL to a receipt or supporting image.</ResponseField>
+
+---
+
+### Create expenses
+
+Creates one or more expense records for a farm. Requires the `add:expenses` scope.
+
+```
+POST /expense/farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>
+  UUID of the farm.
+</ParamField>
+
+#### Request body
+
+The request body may be a single expense object or an array of expense objects.
+
+<ParamField body="farm_id" type="string" required>
+  Must match the `farm_id` in the path.
+</ParamField>
+
+<ParamField body="expense_type_id" type="string" required>
+  ID of the expense type. Use `GET /expense_type/farm/:farm_id` for available types.
+</ParamField>
+
+<ParamField body="expense_date" type="string" required>
+  ISO 8601 datetime of the expense.
+</ParamField>
+
+<ParamField body="value" type="number" required>
+  Expense amount in the farm's local currency.
+</ParamField>
+
+<ParamField body="note" type="string" required>
+  Short description of the expense (1–255 characters).
+</ParamField>
+
+<ParamField body="picture" type="string">
+  URL to a receipt or supporting image.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/expense/farm/abc-123 \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "farm_id": "abc-123",
+    "expense_type_id": "et-uuid-here",
+    "expense_date": "2024-08-15T00:00:00.000Z",
+    "value": 340.50,
+    "note": "Compost delivery from Green Earth Supplies"
+  }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/expense/farm/abc-123', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    farm_id: 'abc-123',
+    expense_type_id: 'et-uuid-here',
+    expense_date: '2024-08-15T00:00:00.000Z',
+    value: 340.50,
+    note: 'Compost delivery from Green Earth Supplies',
+  }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Update an expense
+
+Updates an existing expense. Workers can only update expenses they created. Requires the `delete:expenses` scope (this scope covers both edit and delete for expenses).
+
+```
+PATCH /expense/:farm_expense_id
+```
+
+<ParamField path="farm_expense_id" type="string" required>
+  UUID of the expense to update.
+</ParamField>
+
+Send any subset of the writable expense fields.
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X PATCH "https://api.litefarm.org/expense/expense-uuid-here" \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{ "value": 360.00, "note": "Corrected — larger load" }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/expense/expense-uuid-here', {
+  method: 'PATCH',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ value: 360.0, note: 'Corrected — larger load' }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Delete an expense
+
+Soft-deletes an expense record. Workers can only delete their own expenses.
+
+```
+DELETE /expense/:farm_expense_id
+```
+
+<ParamField path="farm_expense_id" type="string" required>
+  UUID of the expense to delete.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X DELETE "https://api.litefarm.org/expense/expense-uuid-here" \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/expense/expense-uuid-here', {
+  method: 'DELETE',
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+```
+
+</CodeGroup>
+
+---
+
+## Revenue types
+
+Revenue types categorise sales (e.g., "Crop sales", "Livestock sales", "Custom"). LiteFarm provides built-in types; farms can also create their own.
+
+### Get revenue types for a farm
+
+Returns both built-in and custom revenue types available to the farm.
+
+```
+GET /revenue_type/farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>UUID of the farm.</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/revenue_type/farm/abc-123 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/revenue_type/farm/abc-123', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const types = await res.json();
+```
+
+</CodeGroup>
+
+---
+
+### Get a revenue type by ID
+
+```
+GET /revenue_type/:revenue_type_id
+```
+
+<ParamField path="revenue_type_id" type="integer" required>
+  ID of the revenue type.
+</ParamField>
+
+---
+
+### Create a custom revenue type
+
+Requires the `add:revenue_types` scope.
+
+```
+POST /revenue_type
+```
+
+#### Request body
+
+<ParamField body="farm_id" type="string" required>UUID of the farm.</ParamField>
+<ParamField body="revenue_type_name" type="string" required>Name of the new revenue type.</ParamField>
+<ParamField body="agriculture_associated" type="boolean">
+  Whether the revenue type is directly related to agricultural production.
+</ParamField>
+<ParamField body="crop_generated" type="boolean">
+  Whether this revenue type is generated by crops specifically.
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/revenue_type \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "farm_id": "abc-123",
+    "revenue_type_name": "Agri-tourism",
+    "agriculture_associated": true,
+    "crop_generated": false
+  }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/revenue_type', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    farm_id: 'abc-123',
+    revenue_type_name: 'Agri-tourism',
+    agriculture_associated: true,
+    crop_generated: false,
+  }),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Update a revenue type
+
+Updates a farm's custom revenue type. Requires the `edit:revenue_types` scope.
+
+```
+PATCH /revenue_type/:revenue_type_id
+```
+
+<ParamField path="revenue_type_id" type="integer" required>ID of the revenue type to update.</ParamField>
+
+---
+
+### Delete a revenue type
+
+Soft-deletes a custom revenue type. Requires the `delete:revenue_types` scope.
+
+```
+DELETE /revenue_type/:revenue_type_id
+```
+
+<ParamField path="revenue_type_id" type="integer" required>ID of the revenue type to delete.</ParamField>
+
+---
+
+## Expense types
+
+Expense types categorise farm expenses (e.g., "Labour", "Equipment", "Seeds"). LiteFarm provides built-in types. To list expense types available to a farm:
+
+```
+GET /expense_type/farm/:farm_id
+```
+
+<ParamField path="farm_id" type="string" required>UUID of the farm.</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/expense_type/farm/abc-123 \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/expense_type/farm/abc-123', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const expenseTypes = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+<ResponseField name="expense_type_id" type="string">Unique identifier (UUID) for the expense type.</ResponseField>
+<ResponseField name="expense_type_name" type="string">Display name of the expense type.</ResponseField>
+<ResponseField name="farm_id" type="string">Farm UUID for custom types. Null for built-in types.</ResponseField>
+<ResponseField name="expense_translation_key" type="string">Internal i18n key for built-in types.</ResponseField>

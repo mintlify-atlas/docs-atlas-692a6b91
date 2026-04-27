@@ -1,0 +1,77 @@
+---
+title: 'Contributing to LiteFarm — developer overview'
+description: 'LiteFarm is a GPL-3.0 not-for-profit platform built on Node.js, React, and PostgreSQL. Learn how to get involved and navigate the monorepo structure.'
+---
+
+LiteFarm is the world's first community-led, not-for-profit digital farm management platform, licensed under [GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.html). It joins farmers and scientists together to assess the social, environmental, and economic outputs of farming systems. The platform is developed with farmers at the center of the design process, and contributions from developers are welcome and encouraged.
+
+## Monorepo structure
+
+The LiteFarm codebase lives in a single monorepo managed by [Lerna](https://lerna.js.org/). All application packages are under the `packages/` directory.
+
+<CardGroup cols={2}>
+  <Card title="packages/webapp" icon="browser">
+    The client-facing React application. Built with Vite and served on port `3000` in development.
+  </Card>
+  <Card title="packages/api" icon="server">
+    The Express/Node.js REST API server. Entry point is `src/server.ts`, served on port `5001` in development.
+  </Card>
+  <Card title="packages/shared" icon="package">
+    Shared utilities, types, and locale files consumed by both `api` and `webapp`.
+  </Card>
+  <Card title="packages/api/src/jobs" icon="clock">
+    The certification export jobs scheduler. Entry point is `index.js`, runs separately from the main API.
+  </Card>
+</CardGroup>
+
+## Technology stack
+
+LiteFarm is built on a modern, well-established open-source stack.
+
+<CardGroup cols={2}>
+  <Card title="Frontend" icon="react">
+    React 18, Redux Toolkit, Redux Saga, React Hook Form, MUI, and i18next for internationalization. Bundled with Vite.
+  </Card>
+  <Card title="Backend" icon="node-js">
+    Node.js 22 with Express 4. TypeScript is used throughout and compiled with SWC for fast development restarts.
+  </Card>
+  <Card title="Database" icon="database">
+    PostgreSQL 13, accessed via [Knex.js](https://knexjs.org/) for query building and migrations, and [Objection.js](https://vincit.github.io/objection.js/) as the ORM.
+  </Card>
+  <Card title="File storage" icon="box">
+    Digital Ocean Spaces (S3-compatible) in production. [MinIO](https://min.io/) is used locally as a drop-in replacement.
+  </Card>
+</CardGroup>
+
+## UI component library — Storybook
+
+LiteFarm uses [Storybook](https://storybook.js.org/) to develop and document UI components in isolation. You can explore all components without running the full application.
+
+- Run locally: `pnpm storybook` from `packages/webapp` — opens at `http://localhost:6006`
+- Deployed Storybook (auto-updated from the integration branch): [https://65316fc4f177c73a9181a843-yobioprfjv.chromatic.com](https://65316fc4f177c73a9181a843-yobioprfjv.chromatic.com)
+
+## How to get involved
+
+LiteFarm is a collaborative project. To join the team or ask questions about contributing, email [community@litefarm.org](mailto:community@litefarm.org). The team will add you to the community Slack where you can connect with farmers, researchers, designers, and other developers.
+
+<Note>
+  If you need API keys or environment variable values not included in `.env.default`, reach out to [community@litefarm.org](mailto:community@litefarm.org) from the email address you want associated with your Slack account.
+</Note>
+
+## Code of conduct
+
+LiteFarm follows the [Contributor Covenant](https://www.contributor-covenant.org/) code of conduct. All contributors are expected to maintain a harassment-free environment for everyone, regardless of age, disability, ethnicity, gender identity, level of experience, nationality, race, religion, or sexual identity.
+
+**Expected behavior** includes using welcoming and inclusive language, being respectful of differing viewpoints, gracefully accepting constructive criticism, and showing empathy towards other community members.
+
+**Unacceptable behavior** includes the use of sexualized language or imagery, trolling, personal or political attacks, public or private harassment, and publishing others' private information without explicit permission.
+
+Instances of unacceptable behavior may be reported to the project maintainers. All complaints will be reviewed and investigated in confidence.
+
+## Next steps
+
+Once you understand the project structure, set up your local development environment.
+
+<Card title="Local setup" icon="laptop" href="/contributing/local-setup">
+  Install prerequisites, clone the repository, configure environment variables, and run the API and webapp.
+</Card>

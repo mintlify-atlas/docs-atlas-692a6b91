@@ -1,0 +1,159 @@
+---
+title: "Tasks: schedule, assign, and complete farm work"
+description: "Create and manage farm tasks in LiteFarm — assign work to team members, set due dates, use built-in task types or create your own, and track completion."
+---
+
+Tasks are the day-to-day work records in LiteFarm. Every piece of farm work — from applying a soil amendment to scouting for pests — can be logged as a task, assigned to a worker, linked to a location or crop, and tracked through to completion. Tasks also feed into your labour cost calculations in the Finances section.
+
+## Built-in task types
+
+LiteFarm ships with a set of default task types covering the most common farm activities. Each type has its own detail fields relevant to the work being done.
+
+<CardGroup cols={2}>
+  <Card title="Soil amendment" icon="flask">
+    Record applications of fertiliser, compost, or other amendments. Log the product, quantity, and application method.
+  </Card>
+  <Card title="Pest control" icon="bug">
+    Track spraying or other pest and disease management activities. Record the product, target pest, and application method.
+  </Card>
+  <Card title="Field work" icon="tractor">
+    General mechanical or manual field operations such as tilling, mowing, or cultivating.
+  </Card>
+  <Card title="Irrigation" icon="droplets">
+    Log irrigation events including irrigation type, flow rate, and duration.
+  </Card>
+  <Card title="Scouting" icon="binoculars">
+    Record crop monitoring visits. Note observations about pests, diseases, or crop health.
+  </Card>
+  <Card title="Harvest" icon="wheat">
+    Record harvests linked to a management plan. Log the quantity harvested and any notes.
+  </Card>
+  <Card title="Planting" icon="seedling">
+    The initial planting task generated automatically when you create a management plan.
+  </Card>
+  <Card title="Transplant" icon="arrows-left-right">
+    Moving seedlings from one location or container to a final growing location.
+  </Card>
+  <Card title="Cleaning" icon="spray-can">
+    Equipment, facility, or area cleaning tasks. Record the product used if applicable.
+  </Card>
+  <Card title="Animal movement" icon="horse">
+    Moving animals from one location to another. Links to the animals being moved and the destination location.
+  </Card>
+  <Card title="Soil sample" icon="vial">
+    Mark when and where a soil sample is taken, linking to a soil sample location on the map.
+  </Card>
+</CardGroup>
+
+## Creating a custom task type
+
+If none of the default task types fit your work, you can create your own.
+
+<Steps>
+  <Step title="Go to task type management">
+    From the Tasks page, tap the menu or settings option and select **Manage custom tasks**. Farm admins and managers can access this section.
+  </Step>
+  <Step title="Add a new type">
+    Tap **Add custom task** and enter a name (up to 25 characters). The name appears in the task type selector when creating new tasks.
+  </Step>
+  <Step title="Save">
+    Tap **Save**. Your new task type is immediately available when creating tasks on your farm.
+  </Step>
+</Steps>
+
+<Note>
+  Custom task types are specific to your farm and are not shared with other LiteFarm farms. Default task types provided by LiteFarm cannot be deleted.
+</Note>
+
+## Creating a task
+
+<Steps>
+  <Step title="Tap the add button">
+    On the Tasks page, tap the **+** button. If your farm has no locations yet, LiteFarm prompts you to add a location on the map first.
+  </Step>
+  <Step title="Select a task type">
+    Choose from the list of default and custom task types.
+  </Step>
+  <Step title="Set a due date">
+    Pick the date the task should be completed. Tasks with past due dates are shown as overdue in the task list.
+  </Step>
+  <Step title="Choose locations (optional)">
+    Link the task to one or more farm locations. Location-linked tasks appear in the location detail view on the map.
+  </Step>
+  <Step title="Link crops (optional)">
+    For tasks related to a specific crop, select the relevant management plan. Harvest and planting tasks are linked automatically when created from a management plan.
+  </Step>
+  <Step title="Add task-specific details">
+    Fill in any fields specific to the task type, such as product name and quantity for a soil amendment, or irrigation flow rate for an irrigation task.
+  </Step>
+  <Step title="Assign the task">
+    Select the worker responsible for the task. Workers can only be assigned to themselves; managers and admins can assign to anyone on the farm. Leave the task unassigned if you will decide later.
+  </Step>
+  <Step title="Save">
+    Tap **Save** to create the task. It appears in the task list and, if linked to a location, on the map.
+  </Step>
+</Steps>
+
+<Tip>
+  Management plans automatically create planting and harvest tasks when you save them. You do not need to create those tasks manually.
+</Tip>
+
+## Task due dates and recurrence
+
+Each task has a single due date. LiteFarm does not currently support automatic recurrence, but you can duplicate a task or create a new one with the same details for recurring work.
+
+Tasks appear in the task list sorted by due date. Use the date order toggle (ascending or descending) at the top of the task list to switch the sort direction.
+
+## Completing a task
+
+When work is done, mark the task complete:
+
+<Steps>
+  <Step title="Open the task">
+    Tap the task card in the task list or tap the task indicator on the map to open the task detail view.
+  </Step>
+  <Step title="Fill in completion details">
+    Some task types ask for completion-specific information, such as the actual quantity harvested or the duration of an irrigation event. Fill in these fields before completing.
+  </Step>
+  <Step title="Mark as complete">
+    Tap **Complete task**. The task is marked with a completion date and moves out of the active task list.
+  </Step>
+</Steps>
+
+## Abandoning a task
+
+If a task cannot be completed — for example, due to weather or equipment failure — you can abandon it instead.
+
+<Steps>
+  <Step title="Open the task">
+    Tap the task card to open the detail view.
+  </Step>
+  <Step title="Choose abandon">
+    Tap **Abandon task** and enter a reason. This keeps a record of why the task was not done.
+  </Step>
+</Steps>
+
+<Warning>
+  Abandoning a task is not the same as deleting it. Abandoned tasks remain in your records and can affect management plan status.
+</Warning>
+
+## Filtering and viewing the task list
+
+The task list supports several ways to narrow down what you see:
+
+<CardGroup cols={2}>
+  <Card title="Assignee filter" icon="user">
+    Switch between **All tasks**, **My tasks**, and **Unassigned** using the quick-filter dropdown.
+  </Card>
+  <Card title="Advanced filters" icon="sliders">
+    Tap the filter icon to open the full filter panel. Filter by task type, assignee, location, crop, and status.
+  </Card>
+  <Card title="Date order" icon="calendar">
+    Toggle between ascending and descending due date order using the sort control.
+  </Card>
+  <Card title="Task count" icon="list">
+    The task count at the top of the list updates as you apply filters so you always know how many tasks match.
+  </Card>
+</CardGroup>
+
+When a filter is active, an active filter box appears below the toolbar showing which filters are applied. Tap **Clear all filters** to reset to the default view.

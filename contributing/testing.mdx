@@ -1,0 +1,142 @@
+---
+title: 'Testing guide for LiteFarm API and webapp'
+description: 'Run the LiteFarm API test suite with Jest, webapp tests with Vitest, and Storybook for visual checks. Includes commands for linting and coverage reporting.'
+---
+
+LiteFarm has test suites for both the API and the webapp, along with an end-to-end test package. The API uses Jest with Chai for integration tests that run against a dedicated PostgreSQL database. The webapp uses Vitest for unit and component tests, and Storybook for isolated UI component development.
+
+## API tests
+
+The API test suite uses [Jest](https://jestjs.io/) and [Chai](https://www.chaijs.com/). Tests run real database operations against a dedicated `test_farm` database, keeping your development database (`pg-litefarm`) untouched.
+
+### Setting up the test database
+
+Before running tests for the first time, confirm you have an empty `test_farm` database. If you're using Docker, the `initdb.d/` initialization scripts create it automatically when the `db` container first starts. If you're using a native PostgreSQL installation, create it manually:
+
+```sql
+CREATE DATABASE test_farm;
+```
+
+Then from `packages/api`, run the Knex migrations against the test environment:
+
+```bash
+npm run migrate:testing:db
+```
+
+This uses `NODE_ENV=test` and the `test` Knex environment defined in `.knex/knexfile.js`, which connects to the database specified by `TEST_DATABASE` in your `.env` file (defaults to `test_farm`).
+
+### Running tests
+
+```bash title="Run the full test suite"
+npm test
+```
+
+```bash title="Run tests with coverage report"
+npm test -- --coverage .
+```
+
+Coverage output is written to `coverage/index.html`. Open it in a browser to see line-by-line coverage details.
+
+<Note>
+  Tests run with `--runInBand` to execute serially in a single process. This is required because the tests share a live database and running them in parallel causes race conditions.
+</Note>
+
+### Linting
+
+```bash title="Run ESLint on the API source"
+npm run lint
+```
+
+```bash title="Auto-fix ESLint issues"
+npm run fix-lint
+```
+
+ESLint is configured for the TypeScript source files in `src/`.
+
+### Keeping the test database clean
+
+The tests attempt to clean up after themselves, but over time the `test_farm` database can accumulate stale state. It is good practice to periodically drop and recreate the database, then re-run migrations:
+
+```bash title="Using psql — drop and recreate test_farm"
+psql -U postgres -c "DROP DATABASE test_farm;"
+psql -U postgres -c "CREATE DATABASE test_farm;"
+```
+
+Then re-run the migrations:
+
+```bash title="Re-run test database migrations"
+npm run migrate:testing:db
+```
+
+<Tip>
+  If you see unexpected test failures that don't reproduce on a fresh database, dropping and recreating `test_farm` is often the fastest fix.
+</Tip>
+
+### Test database configuration
+
+The test database connection is controlled by these variables in `packages/api/.env`:
+
+```bash title="packages/api/.env — test database variables"
+TEST_DATABASE_HOST=localhost
+TEST_DATABASE=test_farm
+TEST_DATABASE_USER=postgres
+TEST_DATABASE_PASSWORD=postgres
+TEST_DATABASE_PORT=5433  # 5432 if running PostgreSQL natively
+```
+
+Jest sets `TZ=UTC` globally via `jest-global-setup.ts` to ensure consistent date handling across all test environments.
+
+## Webapp tests
+
+The webapp uses [Vitest](https://vitest.dev/) for unit and component tests with [happy-dom](https://github.com/capricorn86/happy-dom) as the test environment.
+
+From `packages/webapp`:
+
+```bash title="Run the webapp test suite"
+pnpm test
+```
+
+```bash title="Run ESLint on the webapp source"
+pnpm lint
+```
+
+## Storybook
+
+[Storybook](https://storybook.js.org/) lets you develop and inspect UI components in isolation without running the full application. It is the recommended way to review and build new components.
+
+From `packages/webapp`:
+
+```bash title="Start Storybook locally"
+pnpm storybook
+```
+
+Storybook opens at [http://localhost:6006](http://localhost:6006).
+
+The deployed Storybook instance (automatically updated from the integration branch) is available at [https://65316fc4f177c73a9181a843-yobioprfjv.chromatic.com](https://65316fc4f177c73a9181a843-yobioprfjv.chromatic.com).
+
+<Tip>
+  Since LiteFarm is a mobile-first web app, use Storybook's viewport addon (included by default) to preview components at mobile dimensions while you build them.
+</Tip>
+
+## End-to-end tests
+
+End-to-end tests live in `packages/end-to-end/`. From the API package you can run just the end-to-end test suite with:
+
+```bash title="Run end-to-end tests (from packages/api)"
+npm run test-end2end
+```
+
+This targets test files matching `endToEnd` in the Jest configuration.
+
+## Summary of test commands
+
+| Command | Location | Description |
+|---|---|---|
+| `npm run migrate:testing:db` | `packages/api` | Set up the `test_farm` test database |
+| `npm test` | `packages/api` | Run the full API test suite |
+| `npm test -- --coverage .` | `packages/api` | Run tests and generate a coverage report |
+| `npm run lint` | `packages/api` | Run ESLint on API source files |
+| `npm run test-end2end` | `packages/api` | Run end-to-end tests |
+| `pnpm test` | `packages/webapp` | Run the webapp Vitest suite |
+| `pnpm lint` | `packages/webapp` | Run ESLint on webapp source files |
+| `pnpm storybook` | `packages/webapp` | Start Storybook on port `6006` |

@@ -1,0 +1,141 @@
+---
+title: "Crops and management plans: plan and track plantings"
+description: "Use LiteFarm's crop catalogue to find or create crops, add varieties, and build management plans that track each planting from seed to harvest."
+---
+
+LiteFarm's crop management system connects your crop library to your farm map and task schedule. You start by finding a crop in the built-in catalogue — or creating your own — then add a variety, and finally create a management plan that tracks every planting through its full lifecycle from seeding to harvest.
+
+## The crop catalogue
+
+The crop catalogue is the central list of all crops available on your farm. It has two sections:
+
+- **On your farm** — crops you have already added, shown with status counts for active, planned, completed, and abandoned plans.
+- **Add to your farm** — LiteFarm's built-in library of common crops that you can add with one tap.
+
+<CardGroup cols={2}>
+  <Card title="Search and filter" icon="magnifying-glass">
+    Use the search bar at the top of the catalogue to find crops by name. Tap the filter icon to narrow results by plan status or date.
+  </Card>
+  <Card title="Status overview" icon="chart-bar">
+    A status info box at the top of your farm's crop list shows how many plans are active, planned, completed, or have no plan, as of the selected date.
+  </Card>
+  <Card title="Add from library" icon="plus">
+    Tap any crop in the library section to open the add crop variety flow. LiteFarm pre-fills the crop name and photo from its built-in data.
+  </Card>
+  <Card title="Custom crops" icon="pen">
+    If your crop is not in the library, use the **Add custom crop** link at the bottom of the catalogue to create one from scratch.
+  </Card>
+</CardGroup>
+
+<Tip>
+  Filter the catalogue by **No plans** to quickly see which crop varieties on your farm do not yet have a management plan scheduled.
+</Tip>
+
+## Adding a custom crop and variety
+
+When you need a crop that is not in LiteFarm's built-in library, you can create it yourself.
+
+<Steps>
+  <Step title="Start a new crop">
+    In the crop catalogue, scroll to the bottom and tap **Add custom crop**. Enter the crop name and select its crop group (for example, vegetables, fruits, or grains).
+  </Step>
+  <Step title="Add a variety">
+    After saving the crop, LiteFarm prompts you to add a variety. Give the variety a name — this could be a cultivar name or simply a description like "Heritage tomato". You can add multiple varieties to the same crop.
+  </Step>
+  <Step title="Set compliance details (optional)">
+    For organic certification purposes you can record whether the seed or planting material is organic, treated, or conventional. This information appears in certification reports.
+  </Step>
+  <Step title="Save the variety">
+    Tap **Save**. The variety now appears in the crop catalogue and is available to use in a management plan.
+  </Step>
+</Steps>
+
+## Management plans
+
+A management plan is a record of a specific planting. It links a crop variety to a location on your farm, defines a planting method and dates, and automatically generates the tasks needed to take that crop from planting to harvest.
+
+### What a management plan contains
+
+<AccordionGroup>
+  <Accordion title="Crop variety and location">
+    Each plan is tied to one crop variety and one farm location (field, garden, or greenhouse). You set the location and the specific beds, rows, or area within it when creating the plan.
+  </Accordion>
+  <Accordion title="Planting method">
+    You choose how the crop will be established. LiteFarm supports four planting methods: broadcast, row planting, container planting, and bed planting. Each method asks for relevant details such as row spacing, container sizes, or bed dimensions.
+  </Accordion>
+  <Accordion title="Dates">
+    You set a seed date (or transplant date if planting seedlings), an expected germination date, and an expected harvest date. If the crop was already in the ground when you added it to LiteFarm, you can mark it as **Already planted** and enter the actual planting date.
+  </Accordion>
+  <Accordion title="Estimated revenue">
+    You can enter an estimated yield and price per unit. LiteFarm uses this to calculate projected crop revenue, which appears in the Finances section.
+  </Accordion>
+  <Accordion title="Tasks">
+    LiteFarm generates a planting task and a harvest task for each plan. You can add other tasks (such as irrigation, scouting, or soil amendment) directly from the plan's detail page.
+  </Accordion>
+</AccordionGroup>
+
+### Creating a management plan
+
+<Steps>
+  <Step title="Open a crop variety">
+    From the crop catalogue, tap a crop to open its varieties, then tap the variety you want to plan.
+  </Step>
+  <Step title="Start a new plan">
+    Tap **Add plan** or the **+** button on the variety detail page.
+  </Step>
+  <Step title="Choose a location">
+    Select the farm location where this crop will be planted. Only locations that can hold crops (fields, gardens, greenhouses, and buffer zones) are shown.
+  </Step>
+  <Step title="Select a planting method">
+    Choose how the crop will be planted and fill in the method-specific details.
+
+    <Tabs>
+      <Tab title="Broadcast">
+        The crop is spread evenly across the entire area. Enter the planting area in your farm's measurement units.
+      </Tab>
+      <Tab title="Row">
+        Crops planted in rows. Enter the number of rows, row spacing, plant spacing, and the length of each row.
+      </Tab>
+      <Tab title="Container">
+        Individual pots or trays. Enter the number of containers and plants per container.
+      </Tab>
+      <Tab title="Beds">
+        Raised or defined beds. Enter the number of beds, bed length, bed width, and spacing between beds.
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Set planting dates">
+    Enter the planned seed date, germination date, and harvest date. If the crop is already in the ground, toggle **Already planted** and enter the actual date.
+  </Step>
+  <Step title="Add estimated revenue (optional)">
+    Enter an expected yield and selling price. LiteFarm calculates the estimated revenue automatically.
+  </Step>
+  <Step title="Name and save the plan">
+    Give the plan a name that helps you identify it in lists (for example, "Spring tomatoes — bed 3") and tap **Save**.
+  </Step>
+</Steps>
+
+## Tracking the lifecycle
+
+After creating a management plan, LiteFarm tracks the crop through these stages:
+
+<CardGroup cols={2}>
+  <Card title="Planned" icon="calendar">
+    The plan exists but the planting date is in the future.
+  </Card>
+  <Card title="Active" icon="seedling">
+    The planting date has passed and the crop is in the ground.
+  </Card>
+  <Card title="Completed" icon="circle-check">
+    The harvest task has been marked complete.
+  </Card>
+  <Card title="Abandoned" icon="ban">
+    The plan was abandoned before harvest, for example due to crop failure.
+  </Card>
+</CardGroup>
+
+You can complete a plan by marking its harvest task as done, or abandon it from the plan's detail page if the crop did not make it to harvest. A completed plan can also be **repeated** — LiteFarm copies all the plan details into a new plan so you do not need to re-enter everything for the next season.
+
+<Note>
+  Abandoned plans are hidden by default in the catalogue filter but remain in your records and count towards organic certification history.
+</Note>

@@ -1,0 +1,286 @@
+---
+title: "API architecture: Express routes, auth, and jobs"
+description: "Explore LiteFarm's Express.js server structure, the Route → Controller → Model pattern, JWT middleware, Objection.js models, and the Bull job scheduler."
+---
+
+The LiteFarm API is an Express.js application written in TypeScript. Its entry point is `packages/api/src/server.ts`, which wires together middleware, route handlers, the Objection.js ORM, and the OAS documentation generator. Understanding this wiring makes it straightforward to add new routes, extend existing models, or trace an incoming request through the stack.
+
+## Server entry point
+
+`server.ts` initialises the Express app in this order:
+
+<Steps>
+  <Step title="OAS generator — response handler">
+    `expressOasGenerator.handleResponses()` is registered first so it can observe every response and build API documentation automatically.
+  </Step>
+  <Step title="Body parsing and CORS">
+    `express.json()` (100 kB limit), `express.urlencoded()`, and a CORS handler are added. The allowed origin is environment-aware: `*` in development, the beta or production hostname otherwise.
+  </Step>
+  <Step title="JWT authentication">
+    `checkJwt` is mounted as a global middleware. All routes defined after this point require a valid JWT, with a small set of public paths explicitly excluded.
+  </Step>
+  <Step title="Route registration">
+    Over 60 route modules are mounted (e.g., `/crop`, `/farm`, `/task`). Each module is an Express `Router` that delegates to a controller.
+  </Step>
+  <Step title="OAS generator — request handler">
+    `expressOasGenerator.handleRequests()` is registered last to capture request payloads and update the documentation.
+  </Step>
+  <Step title="Error handler">
+    A catch-all 404 middleware and a generic error handler return structured JSON errors with the appropriate HTTP status.
+  </Step>
+</Steps>
+
+```typescript title="packages/api/src/server.ts"
+import express from 'express';
+const app = express();
+import expressOasGenerator from 'express-oas-generator';
+import checkJwt from './middleware/acl/checkJwt.js';
+import cors from 'cors';
+import knex from './util/knex.js';
+import { Model } from 'objection';
+
+// Bind all Objection models to the Knex instance
+Model.knex(knex);
+
+// OAS must wrap the entire chain
+expressOasGenerator.handleResponses(app, { alwaysServeDocs: true, ... });
+
+app
+  .use(applyExpressJSON)
+  .use(cors())
+  .use(checkJwt)           // JWT guard for all routes below
+  .use('/crop', cropRoutes)
+  .use('/farm', farmRoutes)
+  .use('/task', taskRoute);
+  // ...
+
+expressOasGenerator.handleRequests();
+```
+
+## Route → controller → model pattern
+
+Every feature follows the same three-layer layout:
+
+```
+src/routes/cropRoute.js       → Express Router, applies middleware
+src/controllers/cropController.js → Request handling, response shaping
+src/models/cropModel.js       → Objection.js model, database queries
+```
+
+A route file wires middleware onto each method-path pair and delegates to a controller factory function:
+
+```javascript title="packages/api/src/routes/cropRoute.js"
+import cropController from '../controllers/cropController.js';
+import express from 'express';
+const router = express.Router();
+import hasFarmAccess from '../middleware/acl/hasFarmAccess.js';
+import checkScope from '../middleware/acl/checkScope.js';
+
+router.get(
+  '/farm/:farm_id',
+  hasFarmAccess({ params: 'farm_id' }),
+  checkScope(['get:crops']),
+  cropController.getAllCrop(),
+);
+
+router.post(
+  '/',
+  hasFarmAccess({ body: 'farm_id' }),
+  checkScope(['add:crops']),
+  cropController.addCropWithFarmID(),
+);
+```
+
+## Middleware stack
+
+### JWT authentication (`checkJwt`)
+
+`checkJwt` is built with `express-jwt` using HS256 and the `JWT_SECRET` environment variable. It verifies the token on every request and populates `req.auth` with the decoded payload (including `user_id`). Paths that must remain public are listed in an `.unless()` call:
+
+```javascript title="packages/api/src/middleware/acl/checkJwt.js"
+import { expressjwt } from 'express-jwt';
+
+const checkJwt = expressjwt({
+  secret: process.env.JWT_SECRET,
+  algorithms: ['HS256'],
+}).unless({
+  path: [
+    '/user',
+    '/login',
+    '/password_reset',
+    /\/api-docs\/*/,
+    /\/dfc\//i,
+    // ...
+  ],
+});
+```
+
+### Farm access (`hasFarmAccess`)
+
+`hasFarmAccess` cross-references the `farm_id` from the request (body, params, or headers) against the `user_farm` join table to confirm the requesting user belongs to that farm.
+
+### Permission scopes (`checkScope`)
+
+`checkScope` loads the user's role permissions from the database and checks them against the required scopes declared on the route (e.g., `['get:crops']`). Permissions are stored in the `permissions` and `role_permissions` tables and fetched fresh on each request to capture any role changes:
+
+```javascript title="packages/api/src/middleware/acl/checkScope.js"
+const checkScope = (expectedScopes, { checkConsent = true } = {}) => {
+  return async (req, res, next) => {
+    const { user_id } = req.auth;
+    const { farm_id } = req.headers;
+
+    const scopes = await userFarmModel
+      .query()
+      .distinct('permissions.name', 'userFarm.role_id')
+      .join('rolePermissions', 'userFarm.role_id', 'rolePermissions.role_id')
+      .join('permissions', 'permissions.permission_id', 'rolePermissions.permission_id')
+      .where('userFarm.farm_id', farm_id)
+      .where('userFarm.user_id', user_id)
+      .where('userFarm.status', 'Active');
+
+    const allowed = expectedScopes.some((s) => scopes.find((p) => p.name === s));
+    return allowed ? next() : res.status(403).send('...');
+  };
+};
+```
+
+### Additional ACL middleware
+
+The `src/middleware/acl/` directory contains further guards:
+
+- `checkSchedulerJwt` / `checkSchedulerPermission` — authenticate requests from the export job scheduler
+- `checkGoogleJwt` / `checkGoogleAccessToken` — validate Google OAuth tokens during sign-in
+- `checkInviteJwt` / `checkInviteTokenContent` — validate invitation tokens
+- `checkResetPasswordJwt` — validate password-reset tokens
+- `isSelf` — restrict operations to the user's own record
+
+## Objection.js models and the base model pattern
+
+All application models extend `BaseModel` (`src/models/baseModel.js`), which itself extends a thin `baseFormatModel`. `BaseModel` mixes in `objection-soft-delete` and adds lifecycle hooks shared by every entity:
+
+```javascript title="packages/api/src/models/baseModel.js"
+import softDelete from 'objection-soft-delete';
+
+class BaseModel extends softDelete({ columnName: 'deleted' })(Model) {
+  async $beforeInsert(context) {
+    await super.$beforeInsert(context);
+    const { user_id } = context;
+    if (!user_id) throw new Error('user_id must be passed into context on update');
+    this.created_by_user_id = user_id;
+    this.updated_by_user_id = user_id;
+    this.created_at = new Date().toISOString();
+    this.updated_at = this.created_at;
+  }
+
+  async $beforeUpdate(opt, context) {
+    await super.$beforeUpdate(opt, context);
+    this.updated_by_user_id = context.user_id;
+    this.updated_at = new Date().toISOString();
+    delete this.created_by_user_id;
+    delete this.created_at;
+  }
+
+  static get hidden() {
+    return ['created_at', 'created_by_user_id', 'updated_by_user_id', 'updated_at', 'deleted'];
+  }
+}
+```
+
+Key points:
+
+- **Soft delete**: records are never hard-deleted; the `deleted` boolean column is set to `true` instead. `whereNotDeleted()` is available on every query.
+- **Audit fields**: `created_by_user_id`, `updated_by_user_id`, `created_at`, and `updated_at` are managed automatically via lifecycle hooks. Controllers must pass `{ user_id }` as the Objection query context.
+- **Hidden fields**: the `hidden` static getter strips audit and soft-delete columns from API responses unless the `showHidden` query context flag is set.
+- **JSON schema**: each model declares a `jsonSchema` object used for validation on insert and update. This is not a database schema — it only drives Objection's validation layer.
+- **Relation mappings**: relationships (has-one, has-many, many-to-many) are declared in `relationMappings()` and used via `withGraphFetched` or `withGraphJoined`.
+
+## OAS/Swagger documentation
+
+API documentation is generated and served by `express-oas-generator`. It instruments the Express middleware chain and builds an OpenAPI 3 specification by observing live request/response traffic during the test suite.
+
+- The specification is served at `/api-docs` in all environments.
+- Version-controlled JSON files (`oas.json`) contain the official documentation.
+- To update the spec, set the environment variable `UPDATE_OAS_FILES` to any value, run the automated tests, and commit the resulting diff.
+
+```typescript title="packages/api/src/server.ts"
+expressOasGenerator.handleResponses(app, {
+  alwaysServeDocs: true,
+  specOutputPath: process.env.UPDATE_OAS_FILES ? './oas.json' : undefined,
+  specOutputFileBehavior: expressOasGenerator.SPEC_OUTPUT_FILE_BEHAVIOR.PRESERVE,
+  tags: ['crop', 'farm', 'task', 'user', /* ... */],
+});
+```
+
+## Job scheduler (Bull + Redis)
+
+The export server is a separate Node process with its own entry point at `src/jobs/index.js`. It is not part of the main API process and connects to Redis independently.
+
+```javascript title="packages/api/src/jobs/index.js"
+import sendOnSchedule from './notifications/index.js';
+import processExports from './certification/index.js';
+import scheduleApiRequests from './requests/index.js';
+
+const redisConf = {
+  redis: {
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    password: process.env.REDIS_PASSWORD,
+  },
+};
+
+processExports(redisConf);     // certification PDF generation
+sendOnSchedule(redisConf);     // scheduled push notifications
+scheduleApiRequests();         // periodic API calls (e.g., weather sync)
+```
+
+The scheduler is started with `npm run scheduler` from `packages/api`. In Docker it runs via `docker compose up export`. Bull queues persist job state in Redis, so jobs survive process restarts.
+
+## Key utilities
+
+### Knex instance (`src/util/knex.js`)
+
+A single Knex instance is created at startup, bound to the environment-appropriate configuration from `.knex/knexfile.js`, and registered with Objection via `Model.knex(knex)`. Decimal columns are parsed as JavaScript numbers (not strings) by overriding `pg.types`:
+
+```javascript title="packages/api/src/util/knex.js"
+import pg from 'pg';
+const PG_DECIMAL_OID = 1700;
+pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
+import Knex from 'knex';
+const environment = process.env.NODE_ENV || 'development';
+import config from '../../.knex/knexfile.js';
+const knex = Knex(config[environment]);
+export default knex;
+```
+
+### Date serialisation
+
+PostgreSQL `date` columns (no time component) are returned by `pg` as JavaScript `Date` objects at midnight UTC. Without intervention, a Pacific-time client would receive `2020-01-14T16:00:00-08:00` and interpret the date as a day earlier.
+
+`server.ts` registers a custom JSON replacer that strips the timezone indicator from known `date` fields and returns `YYYY-MM-DDT00:00:00.000` instead. `BaseModel.$parseJson()` also normalises incoming date values by splitting on `T` and keeping only the date portion.
+
+### Logger
+
+`src/common/logger.js` exports a Winston logger with console and daily-rotating-file transports. Import it wherever `console.log` would otherwise be used.
+
+## Services
+
+The `src/services/` directory holds integrations with third-party systems:
+
+<CardGroup cols={2}>
+  <Card title="google.ts" icon="map">
+    Handles Google OAuth token verification and Google Maps geocoding calls.
+  </Card>
+  <Card title="weatherService.ts" icon="cloud">
+    Fetches weather data from an external provider and stores it for the Weather Board feature.
+  </Card>
+  <Card title="task.ts" icon="check-square">
+    Contains business logic for task assignment, completion, and abandonment that is shared across controllers.
+  </Card>
+  <Card title="datafoodconsortium/" icon="share-2">
+    Implements the Data Food Consortium (DFC) interoperability protocol for market directory features.
+  </Card>
+</CardGroup>
+
+<Tip>
+  When adding a new route, follow the existing pattern: create a route file in `src/routes/`, a controller in `src/controllers/`, and (if needed) a model in `src/models/`. Apply `hasFarmAccess` and `checkScope` as the first two middleware on each handler that operates on farm-scoped data.
+</Tip>

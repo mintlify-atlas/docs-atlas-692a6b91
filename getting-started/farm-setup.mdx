@@ -1,0 +1,199 @@
+---
+title: "Set up your farm: locations, team, and settings"
+description: "Add your farm details, draw field boundaries on the interactive map, invite team members, and learn how to switch between multiple farms in LiteFarm."
+---
+
+Once your account is created, the next step is to tell LiteFarm about your farm. This involves entering your farm name and address, drawing your field boundaries and other locations on the map, configuring units and currency, and inviting the people who work with you.
+
+## Adding your farm
+
+When you sign in for the first time, LiteFarm will take you directly to the **"Tell us about your farm"** screen.
+
+<Steps>
+  <Step title="Enter your farm name">
+    Type a name for your farm in the **Farm name** field. This is the name that will appear throughout the app and in any reports you generate.
+  </Step>
+  <Step title="Set your farm location">
+    In the **Farm location** field, start typing your street address. LiteFarm uses address autocomplete to help you find the right location. You can also:
+
+    - Enter GPS coordinates directly as comma-separated latitude and longitude (e.g. `49.250945, -123.238492`)
+    - Click the location icon to use your device's GPS and fill in your current position automatically
+
+    A satellite map preview will appear once LiteFarm recognises a valid address. This map is for confirmation only — you will draw your actual field boundaries in the next step.
+  </Step>
+  <Step title="Continue to role confirmation">
+    Click **Continue**. LiteFarm will confirm your farm details and take you to your farm dashboard.
+  </Step>
+</Steps>
+
+<Warning>
+  Make sure your browser has permission to access location services if you want to use the GPS button. If location services are blocked, enter your address manually instead.
+</Warning>
+
+## Configuring farm settings
+
+After completing the initial setup, you can update your farm's currency, measurement units, and other preferences at any time from **Farm Settings**.
+
+<CardGroup cols={2}>
+  <Card title="Currency" icon="coins">
+    LiteFarm detects a default currency based on your farm's country, but you can change it. Currency is used across finances, expenses, and revenue reports.
+  </Card>
+  <Card title="Units" icon="ruler">
+    Choose between metric and imperial measurement systems. This affects how areas, distances, and weights are displayed throughout the app.
+  </Card>
+  <Card title="Farm name and address" icon="pen">
+    Update your farm name or location from Farm Settings at any time. Changes take effect immediately across the app.
+  </Card>
+  <Card title="Owner operated" icon="person">
+    Indicate whether the farm is owner-operated. This information is used for certification and research purposes.
+  </Card>
+</CardGroup>
+
+## Setting up farm locations on the map
+
+The **Farm Map** is where you define the physical layout of your farm. Drawing your locations lets you assign tasks and crop plans to specific areas, generate field-level reports, and keep your records organised.
+
+To access the map, click **Map** in the main navigation.
+
+### Adding a location
+
+<Steps>
+  <Step title="Open the map drawer">
+    On the Farm Map screen, click the **+** button or the **Add location** option in the map toolbar. A drawer will slide out showing the available location types.
+  </Step>
+  <Step title="Choose a location type">
+    Select the type of location you want to add. The following types are supported:
+
+    **Crop areas** (can hold crop plans):
+
+    - **Field** — an open-air growing area
+    - **Garden** — a smaller or more intensive growing space
+    - **Greenhouse** — an enclosed growing structure
+    - **Buffer zone** — a strip of land adjacent to a field, often used for organic compliance
+
+    **Infrastructure and other areas:**
+
+    - **Barn** — a farm building
+    - **Ceremonial area** — culturally significant land
+    - **Farm site boundary** — the overall perimeter of your farm
+    - **Natural area** — woodland, hedgerow, or other non-cultivated land
+    - **Residence** — housing on the farm
+    - **Surface water** — ponds, lakes, or reservoirs
+
+    **Linear features:**
+
+    - **Watercourse** — streams, rivers, or drainage channels
+    - **Fence** — boundary lines and enclosures
+
+    **Point features:**
+
+    - **Gate** — entry and exit points
+    - **Water valve** — irrigation control points
+    - **Soil sample location** — marked sampling spots
+    - **Sensor** / **Sensor array** — IoT monitoring devices
+  </Step>
+  <Step title="Draw the location on the map">
+    Use the drawing tools to outline the location on the satellite map. Click to place points and close the shape. For linear features, click along the line and double-click to finish. For point features, click once to place the marker.
+  </Step>
+  <Step title="Name and save the location">
+    Enter a name for the location when prompted. Add any other optional details (such as area size or notes), then click **Save**.
+  </Step>
+</Steps>
+
+<Tip>
+  Start by drawing your **Farm site boundary** to define the outer edge of your property. This makes it easier to orient yourself when adding fields and other locations inside it.
+</Tip>
+
+<Note>
+  You need at least one crop area (field, garden, greenhouse, or buffer zone) before you can create a crop management plan or assign crop-related tasks.
+</Note>
+
+## Inviting team members
+
+To add people to your farm, go to **People** in the main navigation and click **Invite user**.
+
+<Steps>
+  <Step title="Enter the person's details">
+    Fill in the following fields:
+
+    - **Full name** — the person's display name in the app
+    - **Email** — used to send the invitation and for the person to log in. For workers without an email address, leave this field blank.
+    - **Role** — choose the role this person will have on your farm (see below)
+    - **Language of invitation** — the language used in the invitation email
+    - **Hourly wage** *(optional)* — used in labour cost reports
+    - **Phone**, **Gender**, **Birth year** *(optional)*
+  </Step>
+  <Step title="Send the invitation">
+    Click **Invite**. LiteFarm will send an invitation email to the address you provided. The person will appear in your People list with an **Invited** status until they accept.
+  </Step>
+  <Step title="Person accepts the invitation">
+    When the invited person opens their email and clicks the link, they will be guided through the sign-up or sign-in flow and then automatically connected to your farm.
+  </Step>
+</Steps>
+
+<Info>
+  If you are inviting a farm worker who does not have an email address, leave the **Email** field blank. LiteFarm will create a worker profile without an account login. That worker will not be able to log in or receive tasks through the app, but you can still track their hours and assignments.
+</Info>
+
+## User roles and permissions
+
+Each team member has a role that determines what they can access and edit within the farm.
+
+<CardGroup cols={2}>
+  <Card title="Farm Owner" icon="house">
+    Full access to all features: farm settings, finances, crop planning, tasks, locations, and team management. Can invite and remove other users.
+  </Card>
+  <Card title="Farm Manager" icon="clipboard-list">
+    Can create and manage crop plans, tasks, and locations. Can view finances and invite users. Cannot access some administrative farm settings.
+  </Card>
+  <Card title="Farm Worker" icon="person-digging">
+    Can view and complete assigned tasks, and log work. Cannot access finances, farm settings, or manage other users.
+  </Card>
+  <Card title="Extension Officer" icon="graduation-cap">
+    Can view farm data to provide advisory support. Cannot edit farm settings or manage users. Useful for agricultural advisors supporting multiple farms.
+  </Card>
+</CardGroup>
+
+<Tip>
+  You can update a team member's role at any time. Go to **People**, click the person's name, and choose a new role from the dropdown.
+</Tip>
+
+## Switching between farms
+
+If your account belongs to more than one farm, you can switch between them without signing out.
+
+<Steps>
+  <Step title="Open the farm switcher">
+    In the main navigation, click your farm name or the **Switch farm** option. This opens the **Choose your farm** screen, which lists all farms your account is connected to.
+  </Step>
+  <Step title="Select a farm">
+    Click the farm you want to switch to. If your list is long, use the search field to filter by farm name, address, or owner name.
+  </Step>
+  <Step title="Confirm the switch">
+    Click **Continue**. LiteFarm will load the selected farm's data. You will see a brief transition screen confirming the switch.
+  </Step>
+</Steps>
+
+<Note>
+  Your role may differ between farms. When you switch, your available features and permissions will update to reflect your role on the newly selected farm.
+</Note>
+
+## Frequently asked questions
+
+<AccordionGroup>
+  <Accordion title="Can I add more than one farm to my account?">
+    Yes. From the farm selection screen, click **Add new farm** to go through the farm setup flow again. Each farm is managed independently, with its own locations, team, crops, and finances.
+  </Accordion>
+  <Accordion title="Can I rename or delete a location?">
+    Yes. Click any location on the map to open its details panel, where you can edit the name, update attributes, or delete the location. Deleting a location is permanent and will remove it from any associated crop plans and tasks.
+  </Accordion>
+  <Accordion title="What happens if I remove a team member?">
+    Removing a user revokes their access to the farm. Their past task logs and records are preserved. If you re-invite them later, they will rejoin with a fresh invitation.
+  </Accordion>
+  <Accordion title="How do I change my farm's currency or units?">
+    Go to the **Farm Settings** page (accessible from the main menu), scroll to the **Units** or **Currency** section, make your changes, and click **Save**.
+  </Accordion>
+  <Accordion title="Do I need to draw all my fields before I can start using LiteFarm?">
+    No. You can add locations at any time. However, you will need at least one crop area (field, garden, greenhouse, or buffer zone) before you can create a crop management plan or assign crop-related tasks to a location.
+  </Accordion>
+</AccordionGroup>

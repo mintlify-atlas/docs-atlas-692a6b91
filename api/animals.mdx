@@ -1,0 +1,501 @@
+---
+title: "Animals and animal batches — LiteFarm API reference"
+description: "Manage individual animals and batches in LiteFarm, including custom animal types and breeds. Covers create, read, update, remove, and delete endpoints."
+---
+
+The LiteFarm animal module tracks livestock at the individual or batch level. Each animal or batch is linked to an animal type (either a LiteFarm default type or a farm-created custom type) and optionally to a breed. Animals can be associated with tasks, locations, and removal records. All endpoints require `Authorization: Bearer <token>` and the farm ID is taken from the request headers (`farm_id`).
+
+<Note>
+  The `farm_id` for animal endpoints is passed in the request header, not the URL path. Ensure your HTTP client includes `farm_id: <your-farm-id>` in the headers.
+</Note>
+
+---
+
+## Individual animals
+
+### Get all animals on a farm
+
+Returns every non-deleted animal for the authenticated user's farm.
+
+```
+GET /animals
+```
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/animals \
+  -H "Authorization: Bearer <your-token>" \
+  -H "farm_id: abc-123"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/animals', {
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    farm_id: 'abc-123',
+  },
+});
+const animals = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+<ResponseField name="id" type="integer">Unique animal identifier.</ResponseField>
+<ResponseField name="farm_id" type="string">UUID of the farm this animal belongs to.</ResponseField>
+<ResponseField name="default_type_id" type="integer">ID of the LiteFarm default animal type (e.g., cattle, sheep). Mutually exclusive with `custom_type_id`.</ResponseField>
+<ResponseField name="custom_type_id" type="integer">ID of the farm's custom animal type. Mutually exclusive with `default_type_id`.</ResponseField>
+<ResponseField name="default_breed_id" type="integer">ID of the LiteFarm default breed. Mutually exclusive with `custom_breed_id`.</ResponseField>
+<ResponseField name="custom_breed_id" type="integer">ID of the farm's custom breed.</ResponseField>
+<ResponseField name="sex_id" type="integer">ID representing the animal's sex.</ResponseField>
+<ResponseField name="name" type="string">Optional individual name for the animal.</ResponseField>
+<ResponseField name="identifier" type="string">Farm-assigned identifier such as a tag number or ear tag.</ResponseField>
+<ResponseField name="identifier_color_id" type="integer">ID of the colour used for the identifier tag.</ResponseField>
+<ResponseField name="identifier_type_id" type="integer">ID of the identifier type (e.g., ear tag, tattoo).</ResponseField>
+<ResponseField name="origin_id" type="integer">ID indicating how the animal was acquired (e.g., born on farm, purchased).</ResponseField>
+<ResponseField name="birth_date" type="string">ISO 8601 datetime of birth.</ResponseField>
+<ResponseField name="brought_in_date" type="string">ISO 8601 datetime the animal was brought to the farm.</ResponseField>
+<ResponseField name="weaning_date" type="string">ISO 8601 datetime of weaning.</ResponseField>
+<ResponseField name="dam" type="string">Name or identifier of the mother animal.</ResponseField>
+<ResponseField name="sire" type="string">Name or identifier of the father animal.</ResponseField>
+<ResponseField name="supplier" type="string">Name of the supplier if the animal was purchased.</ResponseField>
+<ResponseField name="price" type="number">Purchase price.</ResponseField>
+<ResponseField name="notes" type="string">Free-text notes about the animal.</ResponseField>
+<ResponseField name="photo_url" type="string">URL to the animal's photo.</ResponseField>
+<ResponseField name="organic_status" type="string">`Non-Organic`, `Transitional`, or `Organic`.</ResponseField>
+<ResponseField name="location_id" type="string">UUID of the current location.</ResponseField>
+<ResponseField name="internal_identifier" type="integer">Auto-assigned sequential identifier within the farm.</ResponseField>
+<ResponseField name="animal_removal_reason_id" type="integer">Reason for removal if the animal has been removed.</ResponseField>
+<ResponseField name="removal_date" type="string">ISO 8601 datetime of removal.</ResponseField>
+<ResponseField name="animal_use_relationships" type="array">Array of use relationship objects (e.g., dairy, meat, breeding).</ResponseField>
+
+---
+
+### Create one or more animals
+
+Accepts an array of animal objects. All animals in the request must belong to the same farm (identified from the header).
+
+```
+POST /animals
+```
+
+#### Request body
+
+An array of animal objects. Each object must include either `default_type_id` or `custom_type_id`.
+
+<ParamField body="[]" type="array" required>
+  Array of animal objects to create.
+  <Expandable title="Animal object properties">
+    <ParamField body="default_type_id" type="integer">
+      LiteFarm default animal type ID. Required if `custom_type_id` is not provided.
+    </ParamField>
+    <ParamField body="custom_type_id" type="integer">
+      Farm's custom animal type ID. Required if `default_type_id` is not provided.
+    </ParamField>
+    <ParamField body="default_breed_id" type="integer">LiteFarm default breed ID.</ParamField>
+    <ParamField body="custom_breed_id" type="integer">Farm custom breed ID.</ParamField>
+    <ParamField body="sex_id" type="integer">Sex identifier.</ParamField>
+    <ParamField body="name" type="string">Animal's name.</ParamField>
+    <ParamField body="identifier" type="string">Tag or identifier string.</ParamField>
+    <ParamField body="origin_id" type="integer">Acquisition origin ID.</ParamField>
+    <ParamField body="birth_date" type="string">ISO 8601 birth date.</ParamField>
+    <ParamField body="brought_in_date" type="string">ISO 8601 brought-in date.</ParamField>
+    <ParamField body="organic_status" type="string">`Non-Organic`, `Transitional`, or `Organic`.</ParamField>
+    <ParamField body="supplier" type="string">Supplier name (max 255 chars).</ParamField>
+    <ParamField body="price" type="number">Purchase price.</ParamField>
+    <ParamField body="notes" type="string">Free-text notes.</ParamField>
+    <ParamField body="location_id" type="string">Initial location UUID.</ParamField>
+  </Expandable>
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/animals \
+  -H "Authorization: Bearer <your-token>" \
+  -H "farm_id: abc-123" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "default_type_id": 1,
+      "default_breed_id": 3,
+      "sex_id": 2,
+      "name": "Bessie",
+      "birth_date": "2022-03-15T00:00:00.000Z",
+      "organic_status": "Organic"
+    }
+  ]'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/animals', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    farm_id: 'abc-123',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify([
+    {
+      default_type_id: 1,
+      default_breed_id: 3,
+      sex_id: 2,
+      name: 'Bessie',
+      birth_date: '2022-03-15T00:00:00.000Z',
+      organic_status: 'Organic',
+    },
+  ]),
+});
+```
+
+</CodeGroup>
+
+Returns `201` with an array of created animal objects, each including an `internal_identifier`.
+
+---
+
+### Update one or more animals
+
+Accepts an array of partial animal objects. Each object must include the `id` of the animal to update.
+
+```
+PATCH /animals
+```
+
+#### Request body
+
+An array of objects containing `id` and the fields to update.
+
+<ParamField body="[]" type="array" required>
+  Array of update objects. Each must contain `id`.
+  <Expandable title="Update object properties">
+    <ParamField body="id" type="integer" required>ID of the animal to update.</ParamField>
+    <ParamField body="name" type="string">Updated name.</ParamField>
+    <ParamField body="notes" type="string">Updated notes.</ParamField>
+    <ParamField body="location_id" type="string">New location UUID.</ParamField>
+    <ParamField body="organic_status" type="string">Updated organic status.</ParamField>
+  </Expandable>
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X PATCH https://api.litefarm.org/animals \
+  -H "Authorization: Bearer <your-token>" \
+  -H "farm_id: abc-123" \
+  -H "Content-Type: application/json" \
+  -d '[{ "id": 7, "notes": "Moved to north pasture" }]'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/animals', {
+  method: 'PATCH',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    farm_id: 'abc-123',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify([{ id: 7, notes: 'Moved to north pasture' }]),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Remove (soft-remove) animals
+
+Records a removal event (sale, death, culling) without permanently deleting the records. Sets `animal_removal_reason_id` and `removal_date`.
+
+```
+PATCH /animals/remove
+```
+
+#### Request body
+
+<ParamField body="[]" type="array" required>
+  Array of objects with removal details.
+  <Expandable title="Removal object properties">
+    <ParamField body="id" type="integer" required>ID of the animal to remove.</ParamField>
+    <ParamField body="animal_removal_reason_id" type="integer" required>ID of the removal reason.</ParamField>
+    <ParamField body="removal_date" type="string" required>ISO 8601 datetime of removal.</ParamField>
+    <ParamField body="removal_explanation" type="string">Free-text explanation of removal.</ParamField>
+  </Expandable>
+</ParamField>
+
+---
+
+### Delete animals
+
+Permanently deletes animal records. Requires the `delete:animals` scope.
+
+```
+DELETE /animals
+```
+
+#### Request body
+
+<ParamField body="ids" type="array" required>
+  Array of integer animal IDs to delete.
+</ParamField>
+
+<Warning>
+  This operation is irreversible. Animals with incomplete tasks will have those task relationships removed automatically before deletion.
+</Warning>
+
+---
+
+## Animal batches
+
+Batches track groups of animals of the same type where individual tracking is not needed (e.g., a flock of 50 laying hens). The batch model shares most fields with the individual animal model.
+
+### Get all animal batches on a farm
+
+```
+GET /animal_batches
+```
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/animal_batches \
+  -H "Authorization: Bearer <your-token>" \
+  -H "farm_id: abc-123"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/animal_batches', {
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    farm_id: 'abc-123',
+  },
+});
+const batches = await res.json();
+```
+
+</CodeGroup>
+
+#### Response fields
+
+Same as individual animal fields, plus:
+
+<ResponseField name="count" type="integer">Total number of animals in the batch.</ResponseField>
+<ResponseField name="sex_detail" type="array">
+  Breakdown of sex counts within the batch.
+  <Expandable title="properties">
+    <ResponseField name="sex_id" type="integer">Sex identifier.</ResponseField>
+    <ResponseField name="count" type="integer">Count of animals with this sex.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+### Create one or more animal batches
+
+```
+POST /animal_batches
+```
+
+#### Request body
+
+An array of batch objects. Each must include either `default_type_id` or `custom_type_id`, and a `count`.
+
+<ParamField body="[]" type="array" required>
+  <Expandable title="Batch object properties">
+    <ParamField body="count" type="integer" required>Number of animals in the batch.</ParamField>
+    <ParamField body="default_type_id" type="integer">LiteFarm default type ID.</ParamField>
+    <ParamField body="custom_type_id" type="integer">Farm custom type ID.</ParamField>
+    <ParamField body="default_breed_id" type="integer">LiteFarm default breed ID.</ParamField>
+    <ParamField body="custom_breed_id" type="integer">Farm custom breed ID.</ParamField>
+    <ParamField body="name" type="string">Optional name for the batch.</ParamField>
+    <ParamField body="origin_id" type="integer">Acquisition origin ID.</ParamField>
+    <ParamField body="organic_status" type="string">`Non-Organic`, `Transitional`, or `Organic`.</ParamField>
+    <ParamField body="sex_detail" type="array">Array of `{ sex_id, count }` objects.</ParamField>
+    <ParamField body="location_id" type="string">Initial location UUID.</ParamField>
+  </Expandable>
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/animal_batches \
+  -H "Authorization: Bearer <your-token>" \
+  -H "farm_id: abc-123" \
+  -H "Content-Type: application/json" \
+  -d '[{
+    "default_type_id": 2,
+    "count": 50,
+    "name": "Layer hens cohort A",
+    "organic_status": "Organic",
+    "sex_detail": [{ "sex_id": 1, "count": 50 }]
+  }]'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/animal_batches', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    farm_id: 'abc-123',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify([{
+    default_type_id: 2,
+    count: 50,
+    name: 'Layer hens cohort A',
+    organic_status: 'Organic',
+    sex_detail: [{ sex_id: 1, count: 50 }],
+  }]),
+});
+```
+
+</CodeGroup>
+
+---
+
+### Update one or more animal batches
+
+```
+PATCH /animal_batches
+```
+
+Accepts an array of partial batch objects. Each must include the `id`.
+
+---
+
+### Remove (soft-remove) animal batches
+
+Records a removal event for one or more batches.
+
+```
+PATCH /animal_batches/remove
+```
+
+Same schema as `PATCH /animals/remove`.
+
+---
+
+### Delete animal batches
+
+Permanently deletes batch records.
+
+```
+DELETE /animal_batches
+```
+
+#### Request body
+
+<ParamField body="ids" type="array" required>Array of integer batch IDs to delete.</ParamField>
+
+---
+
+## Animal types
+
+### Get default animal types
+
+Returns the built-in animal types provided by LiteFarm (e.g., cattle, sheep, poultry).
+
+```
+GET /default_animal_types
+```
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/default_animal_types \
+  -H "Authorization: Bearer <your-token>"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/default_animal_types', {
+  headers: { Authorization: 'Bearer <your-token>' },
+});
+const types = await res.json();
+```
+
+</CodeGroup>
+
+---
+
+### Get custom animal types for a farm
+
+Returns the animal types a farm has created.
+
+```
+GET /custom_animal_types
+```
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X GET https://api.litefarm.org/custom_animal_types \
+  -H "Authorization: Bearer <your-token>" \
+  -H "farm_id: abc-123"
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.litefarm.org/custom_animal_types', {
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    farm_id: 'abc-123',
+  },
+});
+```
+
+</CodeGroup>
+
+---
+
+### Create a custom animal type
+
+```
+POST /custom_animal_types
+```
+
+#### Request body
+
+<ParamField body="type" type="string" required>
+  Name for the new animal type (e.g., `Alpaca`, `Bison`).
+</ParamField>
+
+#### Example
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://api.litefarm.org/custom_animal_types \
+  -H "Authorization: Bearer <your-token>" \
+  -H "farm_id: abc-123" \
+  -H "Content-Type: application/json" \
+  -d '{ "type": "Alpaca" }'
+```
+
+```javascript JavaScript
+await fetch('https://api.litefarm.org/custom_animal_types', {
+  method: 'POST',
+  headers: {
+    Authorization: 'Bearer <your-token>',
+    farm_id: 'abc-123',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ type: 'Alpaca' }),
+});
+```
+
+</CodeGroup>

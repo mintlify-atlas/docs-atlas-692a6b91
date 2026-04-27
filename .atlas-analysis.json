@@ -1,0 +1,120 @@
+{
+  "projectType": "saas",
+  "projectName": "LiteFarm",
+  "projectDescription": "A community-led, not-for-profit digital platform that helps diversified farmers manage their operations while enabling participatory assessment of social, environmental, and economic farm outputs.",
+  "theme": "almond",
+  "primaryColor": "#20947e",
+  "lightColor": "#d8e2b5",
+  "darkColor": "#7cbcb4",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "User Guide",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "getting-started/create-account",
+              "getting-started/farm-setup"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/farm-map",
+              "features/crops-management",
+              "features/tasks",
+              "features/animals",
+              "features/finances"
+            ]
+          },
+          {
+            "group": "Insights & Certifications",
+            "pages": [
+              "features/insights",
+              "features/organic-certification",
+              "features/sensors"
+            ]
+          },
+          {
+            "group": "Account & Settings",
+            "pages": [
+              "settings/profile",
+              "settings/farm-settings",
+              "settings/notifications"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developer Guide",
+        "groups": [
+          {
+            "group": "Contributing",
+            "pages": [
+              "contributing/overview",
+              "contributing/local-setup",
+              "contributing/docker",
+              "contributing/testing"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/api",
+              "architecture/frontend",
+              "architecture/database"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "api/authentication",
+              "api/farms-users",
+              "api/crops-management-plans",
+              "api/tasks",
+              "api/animals",
+              "api/finances"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Interactive farm map with location and field management",
+    "Crop and management plan tracking across planting stages",
+    "Task management with scheduling, assignment, and completion",
+    "Animal inventory and batch tracking",
+    "Financial management with expenses, revenue, and reporting",
+    "Organic certification workflow and export",
+    "Farm insights (biodiversity, soil, labour, prices)",
+    "IoT sensor integration and readings",
+    "Multi-language support (English, Spanish, Portuguese, French, German, Hindi)",
+    "Progressive Web App (PWA) with offline capability"
+  ],
+  "publicApiSurface": [
+    "GET/POST /farm — Farm CRUD",
+    "GET/POST/PUT /crop — Crop management",
+    "GET/POST/PUT /crop_variety — Crop variety management",
+    "GET/POST/PUT /management_plan — Crop management plans",
+    "GET/POST/PUT /task — Task management",
+    "GET/POST/PUT /task_type — Custom task types",
+    "GET/POST/PUT /animals — Animal inventory",
+    "GET/POST/PUT /animal_batches — Animal batch management",
+    "GET/POST/PUT /location — Farm location/field management",
+    "GET/POST/PUT /sale — Sales records",
+    "GET/POST/PUT /expense — Farm expenses",
+    "GET/POST /revenue_type — Revenue type management",
+    "GET/POST/PUT /document — Document storage",
+    "GET /insight — Farm insights data",
+    "GET/POST /sensor — Sensor data",
+    "GET/POST /organic_certifier_survey — Certification surveys",
+    "POST /export — Certification document export",
+    "GET/POST /user — User management",
+    "GET/POST/PUT /user_farm — User-farm relationship",
+    "POST /login — Authentication"
+  ]
+}

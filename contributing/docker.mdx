@@ -1,0 +1,195 @@
+---
+title: 'Docker services for LiteFarm local development'
+description: 'Run LiteFarm development dependencies with Docker Compose — PostgreSQL, MinIO, Redis, the export server, and Imaginary — with port mappings and commands.'
+---
+
+LiteFarm uses Docker to manage local development dependencies. Instead of installing PostgreSQL, MinIO, Redis, and other services natively, you can start them all with a single command using the `docker-compose.yml` file at the repo root. Docker is the recommended approach for contributors.
+
+## What Docker is used for
+
+<CardGroup cols={2}>
+  <Card title="Development dependencies" icon="box">
+    Run PostgreSQL, MinIO, Redis, and image processing services without installing them natively.
+  </Card>
+  <Card title="Certification export" icon="file-export">
+    Run the certification document export service alongside its Redis job queue and MinIO storage backend.
+  </Card>
+  <Card title="Simulating production" icon="server">
+    Build and test the beta and production Docker containers locally to troubleshoot deployment issues.
+  </Card>
+  <Card title="Image processing" icon="image">
+    Run the `imaginary` microservice for image compression. This service only exists as a Docker container.
+  </Card>
+</CardGroup>
+
+## Services in docker-compose.yml
+
+The `docker-compose.yml` defines the following services:
+
+| Service | Container name | Description | Host port |
+|---|---|---|---|
+| `db` | `litefarm-db` | PostgreSQL 13 database | `5433` → `5432` |
+| `minio` | — | MinIO object storage (S3-compatible) | `9000` (API), `9090` (console) |
+| `create_minio_bucket` | — | One-time helper that creates the `minio-dev` bucket | — |
+| `redis` | — | Redis 7 for the export job queue | `6380` → `6379` |
+| `export` | — | Certification export Node.js server | `9229` (debug) |
+| `imaginary` | — | h2non/imaginary image compression microservice | `8088` |
+
+<Note>
+  `redis` and `export` use the `export` Docker Compose profile. They are not started by the default `docker compose up` command. Use `docker compose up export` to start them explicitly.
+</Note>
+
+## Common commands
+
+All commands below are run from the root of the repository.
+
+### Starting services
+
+```bash title="Start all default development services (db, minio, imaginary)"
+docker compose up
+```
+
+```bash title="Start certification export services (also starts redis and minio)"
+docker compose up export
+```
+
+```bash title="Start a specific service by name"
+docker compose up [service]
+```
+
+Service names are: `db`, `minio`, `redis`, `export`, `imaginary`.
+
+### Stopping services
+
+```bash title="Stop and remove all containers defined in docker-compose.yml"
+docker compose down
+```
+
+```bash title="Stop and remove all containers and their persistent volumes"
+docker compose down --volumes
+```
+
+<Warning>
+  `docker compose down --volumes` deletes all persisted data, including your local PostgreSQL database contents and uploaded files in MinIO. Use this only when you want a completely clean state.
+</Warning>
+
+### Inspecting containers
+
+```bash title="List all running containers"
+docker ps
+```
+
+```bash title="View logs for a container"
+docker logs --details [container_name]
+```
+
+Container names are `litefarm-db`, `litefarm-api`, and `litefarm-web`.
+
+## PostgreSQL database
+
+The `db` service runs PostgreSQL 13. Docker maps port `5433` on your host to port `5432` inside the container, which avoids conflicts with any natively installed PostgreSQL instance.
+
+```yaml title="Port mapping in docker-compose.yml"
+db:
+  image: postgres:13
+  ports:
+    - "5433:5432"
+  environment:
+    POSTGRES_PASSWORD: "postgres"
+```
+
+The matching configuration in `packages/api/.env.default` is:
+
+```bash title="packages/api/.env.default"
+DEV_DATABASE_HOST=localhost
+DEV_DATABASE=pg-litefarm
+DEV_DATABASE_USER=postgres
+DEV_DATABASE_PASSWORD=postgres
+DEV_DATABASE_PORT=5433
+```
+
+An `initdb.d/` directory at the repo root contains initialization scripts that run when the container is first created (for example, creating the `pg-litefarm` and `test_farm` databases).
+
+## MinIO — local file storage
+
+In production, LiteFarm stores images, uploaded documents, and certification exports on Digital Ocean Spaces (AWS S3-compatible). In local development, [MinIO](https://min.io/) provides an identical API with a local storage backend.
+
+The `docker-compose.yml` starts MinIO and automatically creates a `minio-dev` bucket with public access:
+
+```yaml title="MinIO service in docker-compose.yml"
+minio:
+  image: minio/minio:RELEASE.2023-06-09T07-32-12Z
+  ports:
+    - 9000:9000    # S3 API
+    - 9090:9090    # Web console
+  environment:
+    - MINIO_ROOT_USER=myminioadmin
+    - MINIO_ROOT_PASSWORD=myminioadmin
+```
+
+The matching configuration in `packages/api/.env.default`:
+
+```bash title="packages/api/.env.default — MinIO variables"
+MINIO_ENDPOINT=http://localhost:9000
+PRIVATE_BUCKET_NAME=minio-dev
+PUBLIC_BUCKET_NAME=minio-dev
+DO_SPACES_ACCESS_KEY_ID=myminioadmin
+DO_SPACES_SECRET_ACCESS_KEY=myminioadmin
+```
+
+And in `packages/webapp/.env.default`:
+
+```bash title="packages/webapp/.env.default — MinIO variables"
+VITE_DEV_BUCKET_NAME=minio-dev
+VITE_DEV_ENDPOINT=http://localhost:9000
+```
+
+You can access the MinIO web console at [http://localhost:9090](http://localhost:9090) using username `myminioadmin` and password `myminioadmin`.
+
+## Certification export service
+
+The export service generates PDF certification documents. It is not needed for most development work and is excluded from the default `docker compose up` command.
+
+To start it, ensure the webapp and API are already running, then:
+
+```bash
+docker compose up export
+```
+
+This also starts `redis` (which manages the export job queue) and `minio` (for storing the generated documents).
+
+The export service mounts `packages/api` and `packages/webapp/public/locales` directly as volumes, so it reflects your local code changes without rebuilding the image.
+
+## Imaginary — image compression
+
+The `imaginary` service provides image compression for uploaded photos. It is the only LiteFarm service that runs exclusively as a Docker container (both locally and in production).
+
+```bash
+docker compose up imaginary
+```
+
+Set the following in `packages/api/.env` to connect the API to imaginary:
+
+```bash
+IMAGINARY_TOKEN=localonlytoken
+LOCAL_IMAGINARY=http://localhost:8088
+```
+
+These values match the `localonlytoken` key configured in the `docker-compose.yml` imaginary command.
+
+## Building beta and production containers
+
+To build the beta or production Docker images locally (typically used to troubleshoot build issues):
+
+1. Create a `.env` file in the root of the repo
+2. Add the environment variables referenced in the target compose file
+
+```bash title="Build beta containers"
+docker-compose -f docker-compose.beta.yml up --build
+```
+
+```bash title="Build production containers"
+docker-compose -f docker-compose.prod.yml up --build
+```
+
+Where `[ENV]` is `beta` or `prod`.

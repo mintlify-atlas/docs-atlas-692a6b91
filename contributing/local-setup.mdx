@@ -1,0 +1,271 @@
+---
+title: 'Local development setup for LiteFarm contributors'
+description: 'Clone the LiteFarm repo, install Node.js and pnpm dependencies, configure environment variables, migrate the database, and start the API and webapp.'
+---
+
+This guide walks you through getting a fully working LiteFarm development environment running on your machine. You'll install the required tooling, configure environment variables, migrate the database, and start both the API and the webapp.
+
+## Prerequisites
+
+Before cloning the repository, make sure the following tools are installed.
+
+<CardGroup cols={2}>
+  <Card title="Node.js v22.21.0" icon="node-js">
+    The Node version is pinned in `.nvmrc`. Use NVM to install and switch to the correct version automatically.
+  </Card>
+  <Card title="NVM" icon="terminal">
+    Node Version Manager lets you switch Node versions per project. Required for running `nvm use` in the repo root.
+  </Card>
+  <Card title="pnpm ≥ 9.7.0" icon="package">
+    The webapp uses pnpm as its package manager. The current lockfile was generated with pnpm 10.6.5.
+  </Card>
+  <Card title="Docker (recommended)" icon="docker">
+    Docker is the easiest way to run the PostgreSQL database and supporting services. See the [Docker guide](/contributing/docker).
+  </Card>
+</CardGroup>
+
+<Tabs>
+  <Tab title="Check versions">
+    ```bash
+    node -v
+    nvm -v
+    pnpm -v
+    docker -v
+    ```
+  </Tab>
+  <Tab title="Install pnpm">
+    If pnpm is not installed or is below `9.7.0`:
+    ```bash
+    npm install -g pnpm
+    ```
+  </Tab>
+</Tabs>
+
+## Set up the repository
+
+<Steps>
+  <Step title="Clone the repository">
+    Navigate to the directory where you want to store the project, then clone from GitHub:
+
+    ```bash
+    git clone https://github.com/LiteFarmOrg/LiteFarm.git
+    cd LiteFarm
+    ```
+  </Step>
+
+  <Step title="Switch to the correct Node version">
+    From the repo root, run:
+
+    ```bash
+    nvm use
+    ```
+
+    This reads `.nvmrc` and switches to Node `v22.21.0`. If that version is not installed, NVM will prompt you to install it first with `nvm install`.
+  </Step>
+
+  <Step title="Install root dependencies">
+    ```bash
+    npm install
+    ```
+  </Step>
+
+  <Step title="Install API dependencies">
+    ```bash
+    cd packages/api
+    npm install
+    ```
+  </Step>
+
+  <Step title="Install webapp dependencies">
+    ```bash
+    cd packages/webapp
+    pnpm install
+    ```
+  </Step>
+
+  <Step title="Install shared package dependencies">
+    ```bash
+    cd packages/shared
+    npm install
+    ```
+  </Step>
+</Steps>
+
+## Configure environment variables
+
+Both `packages/api` and `packages/webapp` are configured via `.env` files. These files contain secrets and are not tracked in git.
+
+<Steps>
+  <Step title="Copy the API environment file">
+    ```bash
+    cp packages/api/.env.default packages/api/.env
+    ```
+  </Step>
+
+  <Step title="Copy the webapp environment file">
+    ```bash
+    cp packages/webapp/.env.default packages/webapp/.env
+    ```
+  </Step>
+
+  <Step title="Fill in required values">
+    Open each `.env` file and replace `?` placeholders with real values. The key variables to fill in are:
+
+    **`packages/api/.env`**
+
+    ```bash title="packages/api/.env (key variables)"
+    # Google Maps and OAuth (free tier)
+    GOOGLE_API_KEY=your_google_api_key
+    GOOGLE_OAUTH_CLIENT_ID=your_oauth_client_id
+
+    # OpenWeather (free tier)
+    OPEN_WEATHER_APP_ID=your_openweather_key
+
+    # Database — matches Docker default (port 5433)
+    DEV_DATABASE_HOST=localhost
+    DEV_DATABASE=pg-litefarm
+    DEV_DATABASE_USER=postgres
+    DEV_DATABASE_PASSWORD=postgres
+    DEV_DATABASE_PORT=5433
+    ```
+
+    **`packages/webapp/.env`**
+
+    ```bash title="packages/webapp/.env (key variables)"
+    VITE_GOOGLE_MAPS_API_KEY=your_google_api_key
+    VITE_GOOGLE_OAUTH_CLIENT_ID=your_oauth_client_id
+    VITE_API_URL=http://localhost:5001
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Never add secrets to `.env.default`. That file is tracked by git. Only edit `.env`, which is listed in `.gitignore`.
+</Warning>
+
+<Note>
+  If you need help obtaining API keys, or want to join the LiteFarm team, email [community@litefarm.org](mailto:community@litefarm.org).
+</Note>
+
+## Database setup
+
+LiteFarm uses PostgreSQL. The easiest way to run it is via Docker.
+
+<Tabs>
+  <Tab title="With Docker (recommended)">
+    Start the database container from the repo root:
+
+    ```bash
+    docker compose up
+    ```
+
+    The database is exposed on port `5433` of your host machine (not the default `5432`). The `DEV_DATABASE_PORT=5433` value in `.env.default` is already configured for this.
+
+    Once the container is running, run the Knex migrations from `packages/api`:
+
+    ```bash
+    cd packages/api
+    npm run migrate:dev:db
+    ```
+  </Tab>
+  <Tab title="Native PostgreSQL">
+    If you prefer to install PostgreSQL natively:
+
+    1. Install PostgreSQL and start the service
+    2. Create the databases using `psql`:
+
+    ```sql
+    ALTER ROLE postgres WITH PASSWORD 'postgres';
+    CREATE DATABASE "pg-litefarm";
+    CREATE DATABASE test_farm;
+    ```
+
+    3. Set `DEV_DATABASE_PORT=5432` in `packages/api/.env` (the native default)
+    4. Run migrations from `packages/api`:
+
+    ```bash
+    npm run migrate:dev:db
+    ```
+  </Tab>
+</Tabs>
+
+## Running the applications
+
+Start the API and webapp in separate terminal windows.
+
+<Steps>
+  <Step title="Start the API">
+    From `packages/api`:
+
+    ```bash
+    npm run dev
+    ```
+
+    The API server starts on port `5001` with `--watch` mode enabled, so it restarts automatically when you change backend files.
+  </Step>
+
+  <Step title="Start the webapp">
+    From `packages/webapp`:
+
+    ```bash
+    pnpm dev
+    ```
+
+    The webapp is served at [http://localhost:3000](http://localhost:3000). Vite's HMR reflects changes instantly.
+  </Step>
+</Steps>
+
+<Tip>
+  The webapp is designed as a mobile-first application. Use your browser's mobile device emulation (usually toggled with **F12** → device toolbar) to get the intended layout.
+</Tip>
+
+## Mobile device testing with ngrok
+
+To test on a physical mobile device or share your local environment externally, LiteFarm includes ngrok integration.
+
+<Steps>
+  <Step title="Set up ngrok">
+    1. Create an account at [ngrok.com](https://ngrok.com) and install the ngrok CLI
+    2. Copy the ngrok config file:
+
+    ```bash
+    cp ngrok/ngrok.default.yml ngrok/ngrok.yml
+    ```
+
+    3. Add your auth token to `ngrok/ngrok.yml` by replacing the `?` on the `authtoken` line (get it from [dashboard.ngrok.com/get-started/your-authtoken](https://dashboard.ngrok.com/get-started/your-authtoken))
+  </Step>
+
+  <Step title="Start the tunnels and update .env files">
+    Run these commands in order, each in its own terminal from the repo root:
+
+    ```bash title="Terminal 1 — start both tunnels"
+    npm run ngrok
+    ```
+
+    ```bash title="Terminal 2 — update .env files with the ngrok URLs"
+    npm run ngrok:setup
+    ```
+
+    ```bash title="Terminal 3 — start webapp"
+    cd packages/webapp && pnpm dev
+    ```
+
+    ```bash title="Terminal 4 — start API"
+    cd packages/api && npm run dev
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Always run `npm run ngrok:setup` after forwarding ports to ngrok. This updates your `.env` files with the new tunnel URLs. If you skip this step, the webapp will still point to `localhost`.
+</Note>
+
+You can also forward ports individually:
+
+```bash title="Forward only the API port"
+npm run ngrok:api
+```
+
+```bash title="Forward only the webapp port"
+npm run ngrok:webapp
+```

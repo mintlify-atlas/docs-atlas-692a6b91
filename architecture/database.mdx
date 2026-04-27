@@ -1,0 +1,316 @@
+---
+title: "Database architecture: PostgreSQL, Knex, and Objection"
+description: "Learn how LiteFarm uses PostgreSQL 13, Knex.js migrations, and Objection.js ORM with soft deletes, audit fields, and the key tables that model farm data."
+---
+
+LiteFarm stores all persistent data in PostgreSQL 13. Schema changes are managed through Knex.js migrations, and the application queries the database through Objection.js models. This page covers how those layers fit together, the key tables in the schema, and the patterns — like soft deletes and timezone-aware date handling — that appear throughout the codebase.
+
+## Technology overview
+
+<CardGroup cols={2}>
+  <Card title="PostgreSQL 13" icon="database">
+    Primary data store. Uses UUIDs as primary keys (via the `uuid-ossp` extension), JSONB for structured metadata, and standard PostgreSQL `date` and `timestamp` types.
+  </Card>
+  <Card title="Knex.js 3" icon="code">
+    Query builder and migration runner. The `knexfile.js` defines separate connection configurations for `development`, `test`, `integration`, `production`, and CI environments.
+  </Card>
+  <Card title="Objection.js 3" icon="layers">
+    ORM built on top of Knex. Provides model classes, JSON schema validation on writes, and a fluent query API with eager loading via `withGraphFetched`.
+  </Card>
+  <Card title="objection-soft-delete" icon="trash-2">
+    Plugin mixed into `BaseModel` that routes all deletes through a `deleted = true` patch, preserving records in the database while hiding them from normal queries.
+  </Card>
+</CardGroup>
+
+## Knex configuration
+
+The Knex instance is created in `src/util/knex.js` and bound to all Objection models at server startup:
+
+```javascript title="packages/api/src/util/knex.js"
+import pg from 'pg';
+const PG_DECIMAL_OID = 1700;
+pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat); // return decimals as JS numbers
+
+import Knex from 'knex';
+const environment = process.env.NODE_ENV || 'development';
+import config from '../../.knex/knexfile.js';
+const knex = Knex(config[environment]);
+export default knex;
+```
+
+The `pg.types.setTypeParser` override is important: without it, PostgreSQL `numeric`/`decimal` columns are returned as strings by the `pg` driver, which would break arithmetic in the application layer.
+
+The connection for each environment is declared in `.knex/knexfile.js`:
+
+```javascript title="packages/api/.knex/knexfile.js"
+export default {
+  development: {
+    client: 'postgresql',
+    connection: {
+      host: process.env.DEV_DATABASE_HOST,
+      database: process.env.DEV_DATABASE,       // pg-litefarm
+      user: process.env.DEV_DATABASE_USER,
+      password: process.env.DEV_DATABASE_PASSWORD,
+      port: process.env.DEV_DATABASE_PORT || 5432,
+    },
+    migrations: { directory: '../db/migration' },
+    seeds: { directory: '../db/seeds' },
+  },
+  test: {
+    client: 'postgresql',
+    connection: {
+      host: process.env.TEST_DATABASE_HOST,
+      database: process.env.TEST_DATABASE,      // test_farm
+      user: process.env.TEST_DATABASE_USER,
+      password: process.env.TEST_DATABASE_PASSWORD,
+    },
+    pool: { min: 0, max: 100 },
+    migrations: { directory: '../db/migration' },
+    seeds: { directory: '../db/seeds' },
+  },
+  // integration, production, pipeline, ci...
+};
+```
+
+## Migration workflow
+
+All schema changes are expressed as Knex migration files in `packages/api/db/migration/`. File names are timestamped (e.g., `20240116175706_create_animal_tables.js`) and executed in chronological order.
+
+<Steps>
+  <Step title="Write the migration">
+    Create a new file in `db/migration/` with `up` and `down` exports. Use the Knex schema builder:
+
+    ```javascript
+    export const up = async function (knex) {
+      await knex.schema.createTable('animal', function (table) {
+        table.increments('id').primary();
+        table.string('farm_id').references('farm_id').inTable('farm');
+        table.boolean('deleted').notNullable().defaultTo(false);
+        table.timestamps(false, true);
+      });
+    };
+
+    export const down = async function (knex) {
+      await knex.schema.dropTable('animal');
+    };
+    ```
+  </Step>
+  <Step title="Run against the development database">
+    ```bash
+    # From packages/api
+    npm run migrate:dev:db
+    ```
+
+    This runs `knex migrate:latest` with the development environment config, applying all pending migrations to `pg-litefarm`.
+  </Step>
+  <Step title="Run against the test database">
+    ```bash
+    npm run migrate:testing:db
+    ```
+
+    This targets the `test_farm` database (via `NODE_ENV=test`). Run this after creating a new `test_farm` database or after schema changes.
+  </Step>
+  <Step title="Roll back if needed">
+    ```bash
+    npm run migrate:make:rollback
+    ```
+
+    Rolls back the most recent migration batch on the development database.
+  </Step>
+</Steps>
+
+<Note>
+  The first migration (`20180517190849_create_lite_farm_db.js`) creates the initial schema including `farm`, `users`, and several reference tables. It also enables the `uuid-ossp` PostgreSQL extension used to generate UUID primary keys.
+</Note>
+
+## Key tables and models
+
+The schema has grown through 400+ migrations since 2018. These are the core tables you will encounter most frequently:
+
+<AccordionGroup>
+  <Accordion title="users and user_farm">
+    `users` stores individual user accounts. `user_farm` is a join table that represents the many-to-many relationship between users and farms, and also carries the user's role (`role_id`), status (`Active`, `Invited`, `Inactive`), wage, and consent flag.
+
+    ```javascript title="packages/api/src/models/userModel.js"
+    class User extends Model {
+      static get tableName() { return 'users'; }
+      static get idColumn()  { return 'user_id'; }
+
+      static get jsonSchema() {
+        return {
+          type: 'object',
+          required: ['first_name', 'email'],
+          properties: {
+            user_id: { type: 'string' },
+            email: { type: 'string', format: 'email' },
+            language_preference: { type: 'string' },
+            status_id: { type: 'number' },
+            // ...
+          },
+        };
+      }
+    }
+    ```
+
+    Note that `userModel.js` extends `baseFormatModel` directly (not `BaseModel`) because users do not use the soft-delete pattern — account deletion follows a different flow.
+  </Accordion>
+  <Accordion title="farm">
+    The `farm` table is the central entity. Nearly every other table has a `farm_id` foreign key. The `units` JSONB column stores per-farm measurement and currency preferences. `grid_points` (lat/lng) and `utc_offset` are used for map rendering and timezone-aware notifications.
+
+    ```javascript title="packages/api/src/models/farmModel.js"
+    class Farm extends BaseModel {
+      static get tableName() { return 'farm'; }
+      static get idColumn()  { return 'farm_id'; }
+
+      static get jsonSchema() {
+        return {
+          type: 'object',
+          required: ['farm_name'],
+          properties: {
+            farm_id: { type: 'string' },
+            units: {
+              type: 'object',
+              properties: {
+                measurement: { type: 'string', enum: ['imperial', 'metric'] },
+                currency: { type: 'string' },
+                date_format: { type: 'string', enum: ['MM/DD/YY', 'DD/MM/YY', 'YY/MM/DD'] },
+              },
+            },
+            utc_offset: { type: 'integer' },
+          },
+        };
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="crop and crop_variety">
+    `crop` holds a global catalogue of crops (seeded by LiteFarm) plus farm-specific custom crops. `crop_variety` stores farm-specific planting configurations — organic status, seed source, yield estimates — and is the entity that appears in management plans.
+
+    The `Crop` model extends `BaseModel` and overrides `hidden` to strip a large set of agronomic detail columns (nutrition data, water coefficients) from API responses until those features are fully implemented.
+  </Accordion>
+  <Accordion title="location">
+    `location` is the base table for all physical farm areas. Each location has a `name`, a `farm_id`, and a polymorphic sub-type linked via a separate table (`field`, `garden`, `greenhouse`, `barn`, `fence`, `gate`, `watercourse`, etc.).
+
+    The `figure` table stores the geometric shape (polygon, line, or point) associated with each location. The `Location` model uses `withGraphFetched('[figure.[area], field, garden]')` to retrieve the geometry and type in a single query.
+
+    ```javascript title="packages/api/src/models/locationModel.js"
+    class Location extends BaseModel {
+      static get tableName() { return 'location'; }
+
+      static get relationMappings() {
+        return {
+          figure:   { relation: Model.HasOneRelation, modelClass: figureModel, ... },
+          field:    { relation: Model.HasOneRelation, modelClass: fieldModel, ... },
+          garden:   { relation: Model.HasOneRelation, modelClass: gardenModel, ... },
+          // barn, greenhouse, fence, gate, watercourse, buffer_zone, etc.
+        };
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="task">
+    `task` is the base table for all farm work orders. Each task record carries scheduling (`due_date`, `complete_date`, `abandon_date`), assignment (`assignee_user_id`), and status data. The actual work type is stored in a linked sub-task table (`harvest_task`, `soil_amendment_task`, `pest_control_task`, `irrigation_task`, etc.) joined via a `HasOneRelation`.
+
+    ```javascript title="packages/api/src/models/taskModel.js"
+    class TaskModel extends BaseModel {
+      static get tableName() { return 'task'; }
+
+      static get relationMappings() {
+        return {
+          harvest_task:       { relation: Model.HasOneRelation, modelClass: harvestTaskModel, ... },
+          soil_amendment_task:{ relation: Model.HasOneRelation, modelClass: soilAmendmentTaskModel, ... },
+          locations: {
+            relation: Model.ManyToManyRelation,
+            modelClass: locationModel,
+            join: {
+              from: 'task.task_id',
+              through: { modelClass: locationTasksModel, from: 'location_tasks.task_id', to: 'location_tasks.location_id' },
+              to: 'location.location_id',
+            },
+          },
+        };
+      }
+    }
+    ```
+
+    Tasks are linked to locations via the `location_tasks` join table, to management plans via `management_tasks`, to animals via `task_animal_relationship`, and to documents via `task_document`.
+  </Accordion>
+  <Accordion title="management_plan and planting_management_plan">
+    A `management_plan` represents a farm's intention to grow a crop variety through a season. Each plan has one or more `planting_management_plan` records for each planting stage (seed, transplant, final location). These are the entities that connect crop varieties to field locations and drive the task timeline.
+  </Accordion>
+  <Accordion title="animal and animal_batch">
+    `animal` stores individual livestock records. `animal_batch` stores groups of animals managed collectively. Both reference `default_animal_type` / `custom_animal_type` and `default_animal_breed` / `custom_animal_breed` for classification. Movement tasks track herd movements between locations.
+  </Accordion>
+</AccordionGroup>
+
+## Soft delete pattern
+
+All models that extend `BaseModel` use `objection-soft-delete` instead of issuing SQL `DELETE` statements. Deleting a record sets `deleted = true` on that row.
+
+Queries built through Objection automatically exclude deleted rows when you call `.whereNotDeleted()`:
+
+```javascript
+// Returns only non-deleted locations for a farm
+const locations = await Location.query()
+  .where('farm_id', farmId)
+  .whereNotDeleted();
+```
+
+The `BaseModel.$beforeDelete` lifecycle hook updates `updated_by_user_id` and `updated_at` when a soft delete occurs, so the audit trail remains consistent.
+
+```javascript title="packages/api/src/models/baseModel.js"
+async $beforeDelete(context) {
+  await super.$beforeDelete(context);
+  const { user_id } = context;
+  if (!user_id) throw new Error('user_id must be passed into context on update');
+  this.updated_by_user_id = user_id;
+  this.updated_at = new Date().toISOString();
+}
+```
+
+<Warning>
+  Always call `.whereNotDeleted()` when querying entities that extend `BaseModel`. Omitting it will return soft-deleted records and is a common source of bugs.
+</Warning>
+
+## Date handling and timezone safety
+
+PostgreSQL's `date` type (no time component) is returned by the `pg` Node driver as a JavaScript `Date` object with midnight UTC time. Transmitting this as ISO 8601 (`2020-01-15T00:00:00.000Z`) causes a one-day offset for users in negative UTC offset timezones.
+
+LiteFarm resolves this at two points:
+
+**1. JSON serialiser in `server.ts`**: a custom `json replacer` function strips the timezone indicator from a known list of `date` column names before the response is sent:
+
+```typescript title="packages/api/src/server.ts"
+const pgDateTypeFields = [
+  'abandon_date', 'complete_date', 'due_date', 'effective_date',
+  'germination_date', 'harvest_date', 'plant_date', 'seed_date',
+  'start_date', 'termination_date', 'transition_date', 'transplant_date',
+  'valid_until', 'sale_date',
+];
+
+app.set('json replacer', (key, value) => {
+  if (value && pgDateTypeFields.includes(key)) {
+    const matches = value.match(/^(\d{4}-[0-1]\d-[0-3]\d)(T00:00:00\.000)?Z?$/);
+    if (matches) return `${matches[1]}T00:00:00.000`; // no timezone indicator
+  }
+  return value;
+});
+```
+
+**2. `BaseModel.$parseJson()`**: strips the time portion from these same columns when an Objection model instance is constructed from a query result, so date values arriving from the DB are `YYYY-MM-DD` strings inside model instances.
+
+## Test database
+
+The API test suite uses a separate database (`test_farm`) so that test runs never touch development data. Run the migrations against `test_farm` before running tests for the first time:
+
+```bash
+# From packages/api
+npm run migrate:testing:db   # NODE_ENV=test targets test_farm
+npm test                     # runs Jest with --runInBand (sequential)
+```
+
+The test environment uses `pool: { min: 0, max: 100 }` to handle the high concurrency of parallel test fixtures. Tests use `chai` and `chai-http` to make real HTTP requests against the running Express app, which exercises the full middleware and model stack against actual database operations.
+
+<Tip>
+  If tests leave stale data or fail unexpectedly, drop and recreate the `test_farm` database in `psql`, then re-run `npm run migrate:testing:db`. The test suite is designed to clean up after itself but database corruption can accumulate over time.
+</Tip>

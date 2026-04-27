@@ -1,0 +1,176 @@
+---
+title: "Finances: track farm revenue, expenses, and labour costs"
+description: "Record sales and expenses, estimate crop revenue, track labour costs, create custom transaction types, and generate financial reports in LiteFarm."
+---
+
+LiteFarm's Finances section gives you a consolidated view of your farm's money in and money out. You can record actual sales and operating expenses, estimate future revenue from crop management plans, review how much you are spending on labour, and generate reports filtered by date range. All transactions are shown in your farm's local currency.
+
+## The finances dashboard
+
+When you open Finances, a summary carousel at the top of the screen shows your key financial metrics for the selected date range:
+
+<CardGroup cols={2}>
+  <Card title="Total revenue" icon="arrow-trend-up">
+    The sum of all recorded sales in the selected period.
+  </Card>
+  <Card title="Estimated revenue" icon="chart-line">
+    Projected revenue from management plans with harvest tasks falling within the date range.
+  </Card>
+  <Card title="Labour expense" icon="clock">
+    The cost of farm labour based on completed tasks and worker wage rates.
+  </Card>
+  <Card title="Other expenses" icon="receipt">
+    All non-labour expenses recorded for the period.
+  </Card>
+</CardGroup>
+
+Below the carousel, a transaction list shows every sale and expense in chronological order. Use the search bar to find transactions by note or type, and use the filter controls to narrow by expense type or revenue type.
+
+## Recording sales
+
+A sale records actual revenue received. Each sale is tied to a revenue type and can include multiple crop items if the revenue comes from crop sales.
+
+<Steps>
+  <Step title="Open add transaction">
+    From the Finances page, tap **Add transaction** and select **Sale**.
+  </Step>
+  <Step title="Select a revenue type">
+    Choose from the list of available revenue types. LiteFarm includes default types such as crop sale. If your revenue does not fit an existing type, select a custom type or create one (see Custom revenue types below).
+  </Step>
+  <Step title="Add crop sale items (if applicable)">
+    For crop revenue types, add one or more line items. For each item, select the crop variety, enter the quantity sold and the price per unit. LiteFarm calculates the line total automatically.
+  </Step>
+  <Step title="Enter the sale date and total">
+    Set the date the sale occurred. For non-crop revenue types, enter the total amount directly.
+  </Step>
+  <Step title="Add a note (optional)">
+    Add a short note to help you identify the transaction later — for example, the customer name or market where the sale took place.
+  </Step>
+  <Step title="Save">
+    Tap **Save**. The sale appears in the transaction list and is included in the total revenue figure.
+  </Step>
+</Steps>
+
+## Recording expenses
+
+Expenses record money spent on the farm. Each expense is categorised by an expense type.
+
+<Steps>
+  <Step title="Open add transaction">
+    From the Finances page, tap **Add transaction** and select **Expense**.
+  </Step>
+  <Step title="Select one or more expense types">
+    Choose the expense type that best describes the cost. You can record multiple expense types in one entry if a single purchase covers several categories.
+  </Step>
+  <Step title="Enter the amount and date">
+    Enter the amount for each expense type and set the date the expense was incurred.
+  </Step>
+  <Step title="Add a note (optional)">
+    Include a note such as a supplier name, invoice reference, or description of what was purchased.
+  </Step>
+  <Step title="Save">
+    Tap **Save**. The expense appears in the transaction list and is added to the total expense figure.
+  </Step>
+</Steps>
+
+### Default expense types
+
+LiteFarm includes a set of built-in expense types covering common farm costs such as seeds, labour, equipment, fuel, and more. These default types cannot be deleted.
+
+## Custom revenue types and expense types
+
+You can create custom types to categorise transactions that do not fit the defaults.
+
+<Tabs>
+  <Tab title="Custom revenue types">
+    <Steps>
+      <Step title="Open revenue type management">
+        From the Finances page, navigate to **Manage custom revenue types**.
+      </Step>
+      <Step title="Add a new type">
+        Tap **Add revenue type** and give it a name. You can also add a description to remind yourself what it covers.
+      </Step>
+      <Step title="Set agriculture association">
+        Indicate whether this revenue type is associated with agricultural activity. This affects how it is reported in certification exports.
+      </Step>
+      <Step title="Save">
+        Tap **Save**. The type is now available in the revenue type list when adding a sale.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Custom expense types">
+    <Steps>
+      <Step title="Open expense type management">
+        From the Finances page, navigate to **Manage custom expense types**.
+      </Step>
+      <Step title="Add a new type">
+        Tap **Add expense type** and enter a name and optional description.
+      </Step>
+      <Step title="Save">
+        Tap **Save**. The type is now available when recording expenses.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+<Note>
+  Custom types are specific to your farm. Other farms using LiteFarm will not see your custom types.
+</Note>
+
+## Estimated crop revenue
+
+LiteFarm calculates estimated revenue from your management plans so you can see projected income alongside actual income.
+
+Estimated revenue appears in the dashboard carousel and in the **Estimated revenue** section of the Finances page. It is calculated from management plans that:
+
+1. Have not been abandoned.
+2. Have a harvest task with a due date falling within the selected date range.
+3. Have an estimated revenue value entered in the management plan details.
+
+To update estimated revenue for a plan, go to the management plan details and edit the expected yield and price per unit fields.
+
+## Labour cost tracking
+
+Labour costs are calculated automatically from completed tasks. LiteFarm uses each worker's hourly wage rate (set in their farm profile) and the time they logged for completed tasks to calculate a labour cost per task.
+
+The **Labour** section within Finances breaks down costs by employee and by task, giving you a detailed view of where your labour budget is being spent.
+
+<Tip>
+  Make sure worker wage rates are set correctly in the farm's People settings. Without wage rates, labour costs will show as zero.
+</Tip>
+
+## Financial reports and filtering by date range
+
+### Selecting a date range
+
+At the top of the Finances page, the date range selector controls which transactions appear in the dashboard and list. You can choose from preset ranges (current week, month, or year) or set a custom start and end date. The carousel summary and transaction list both update when you change the range.
+
+### Generating a report
+
+LiteFarm can generate a financial summary report for the selected date range:
+
+<Steps>
+  <Step title="Tap the report button">
+    On the Finances page, tap the **Report** button in the title bar. This option is available when you are online.
+  </Step>
+  <Step title="Review the report">
+    The report summarises total revenue, total expenses, labour costs, and net profit or loss for the selected period, broken down by transaction type.
+  </Step>
+  <Step title="Export (optional)">
+    If export is available on your device, you can save or share the report for your records or accountant.
+  </Step>
+</Steps>
+
+### Filtering transactions
+
+Use the filter panel to narrow the transaction list:
+
+- **Expense type** — show only expenses of a specific type.
+- **Revenue type** — show only sales of a specific type.
+- **Search** — find transactions by note or type name using the search bar.
+
+When filters are active, the dashboard carousel and totals reflect only the filtered transactions.
+
+<Warning>
+  The report and add transaction buttons are disabled when you are offline. You can view existing transactions and reports in offline mode but cannot create or export new records until you reconnect.
+</Warning>
